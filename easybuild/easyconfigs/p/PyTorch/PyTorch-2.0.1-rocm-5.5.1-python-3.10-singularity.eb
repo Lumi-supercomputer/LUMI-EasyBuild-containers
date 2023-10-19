@@ -1,0 +1,72 @@
+easyblock = 'MakeCp'
+
+name =          'PyTorch'
+version =       '2.0.1'
+versionsuffix = '-rocm-5.5.1-python-3.10-singularity'
+
+local_sif=   'lumi-pytorch-rocm-5.5.1-python-3.10-pytorch-v2.0.1-dockerhash-f13f8a86aada.sif'
+local_docker='lumi-pytorch-rocm-5.5.1-python-3.10-pytorch-v2.0.1.docker'
+
+homepage = 'https://pytorch.org/'
+
+whatis = [
+    'Description: PyTorch, a machine learning package'
+]
+
+description = """
+This module provides a container with PyTorch %(version)s. 
+
+The module defines a number of environment variables:
+*   SIF and SIFPYTORCH: The full path and name of the Singularity SIF file 
+    to use with singularity exec etc.
+*   SINGULAIRTY_BINDPATH: Mounts the necessary directories from the system,
+    including /users, /project, /scratch and /flash so that you should be
+    able to use your regular directories in the container.
+    
+Note that this container uses a Conda environment internally. When in
+the container, the command to activate the container is contained in the
+environment variable WITH_CONDA.
+"""
+
+toolchain = SYSTEM
+
+sources = ['PyTorch-2.0.1-rocm-5.5.1-python-3.10-singularity.tar']
+
+skipsteps = ['build']
+
+files_to_copy = [
+    ([local_sif],    '.'),
+    ([local_docker], 'share/docker-defs/')    
+]
+
+local_runscript_python="""
+#!/bin/bash -e
+
+# Start conda environment inside the container
+\$WITH_CONDA
+
+# Run application
+python "\$@"
+
+"""
+
+postinstallcmds = [
+    'mkdir -p %(installdir)s/runscripts',
+    f'cat >%(installdir)s/runscripts/python-conda <<EOF {local_runscript_python}EOF',
+    'chmod a+x %(installdir)s/runscripts/python-conda'
+]
+
+sanity_check_paths = {
+    'files': [f'{local_sif}', f'share/docker-defs/{local_docker}'],
+    'dirs':  [],
+}
+
+modextravars = {
+    'SIF':              '%(installdir)s/' + local_sif,
+    'SIFPYTORCH':       '%(installdir)s/' + local_sif,
+    'SINGULARITY_BIND': '/var/spool/slurmd:/var/spool/slurmd,/opt/cray:/opt/cray,/usr/lib64/libcxi.so.1:/usr/lib64/libcxi.so.1,' +
+                        '%(installdir)s/runscripts:/runscripts,' + 
+                        '/pfs,/scratch,/projappl,/project,/flash,/appl'
+}
+
+moduleclass = 'devel'
