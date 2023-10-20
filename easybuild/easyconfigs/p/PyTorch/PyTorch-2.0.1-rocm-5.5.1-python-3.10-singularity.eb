@@ -30,7 +30,16 @@ environment variable WITH_CONDA.
 
 toolchain = SYSTEM
 
-sources = ['PyTorch-2.0.1-rocm-5.5.1-python-3.10-singularity.tar']
+sources = [
+    {
+        'filename':    local_sif,
+        'extract_cmd': '/bin/cp %s .'
+    },
+    {
+        'filename':    local_docker,
+        'extract_cmd': '/bin/cp %s .'
+    },
+]
 
 skipsteps = ['build']
 

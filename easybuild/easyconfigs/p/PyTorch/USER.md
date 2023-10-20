@@ -36,7 +36,8 @@ Example:
 
 ```
 salloc -N1 -pstandard-g -t 30:00
-srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda -c "import torch"
+srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda \
+    -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 ```
 
 After loading the module, the docker definition file used when building the container
