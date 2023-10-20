@@ -66,16 +66,23 @@ postinstallcmds = [
 ]
 
 sanity_check_paths = {
-    'files': [f'{local_sif}', f'share/docker-defs/{local_docker}'],
+    # We deliberately don't check for local_sif as the user is allowed to remove that file
+    # but may still want to regenerate the module which would then fail in the sanity check.
+    'files': [f'share/docker-defs/{local_docker}'],
     'dirs':  [],
 }
 
 modextravars = {
-    'SIF':              '%(installdir)s/' + local_sif,
-    'SIFPYTORCH':       '%(installdir)s/' + local_sif,
+    #'SIF':              '%(installdir)s/' + local_sif,
+    #'SIFPYTORCH':       '%(installdir)s/' + local_sif,
     'SINGULARITY_BIND': '/var/spool/slurmd:/var/spool/slurmd,/opt/cray:/opt/cray,/usr/lib64/libcxi.so.1:/usr/lib64/libcxi.so.1,' +
                         '%(installdir)s/runscripts:/runscripts,' + 
                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
 }
+
+modluafooter = f"""
+-- Call a routine to set the various environment variables.
+create_container_vars( '{local_sif}', 'PyTorch', '%(installdir)s' )
+"""
 
 moduleclass = 'devel'
