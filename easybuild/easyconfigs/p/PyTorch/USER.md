@@ -5,6 +5,7 @@
 The PyTorch container is developed by AMD specifically for LUMI and contains the
 necessary parts to run PyTorch on LUMI, including the plugin needed for RCCL when
 doing distributed AI, and a suitable version of ROCm for the version of PyTorch.
+The apex, torchvision, torchdata, torchtext and torchaudio packages are also included.
 
 The EasyBuild installation with the EasyConfigs mentioned below will do two things:
 
