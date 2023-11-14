@@ -79,7 +79,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb AlphaFold-69afc4d-rocm-5.5.1-python-3.9-singularity.eb
+eb AlphaFold-69afc4d-rocm-5.5.1-python-3.9-singularity-20231108.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
