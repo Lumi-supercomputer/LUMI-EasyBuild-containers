@@ -2,10 +2,10 @@ easyblock = 'MakeCp'
 
 name =          'TensorFlow'
 version =       '2.11.1'
-versionsuffix = '-rocm-5.5.1-python-3.10-horovod-0.28.1'
+versionsuffix = '-rocm-5.5.1-python-3.10-horovod-0.28.1-singularity-20231110'
 
-local_sif=   'lumi-tensorflow-rocm-5.5.1-python-3.10-tensorflow-2.11.1-horovod-0.28.1-dockerhash-b15917d17f85.sif'
-local_docker='lumi-tensorflow-rocm-5.5.1-python-3.10-tensorflow-2.11.1-horovod-0.28.1.docker'
+local_sif =    'lumi-tensorflow-rocm-5.5.1-python-3.10-tensorflow-2.11.1-horovod-0.28.1-dockerhash-9c9351c30d4c.sif'
+local_docker = 'lumi-tensorflow-rocm-5.5.1-python-3.10-tensorflow-2.11.1-horovod-0.28.1.docker'
 
 homepage = 'https://www.tensorflow.org/'
 
@@ -22,6 +22,8 @@ The module defines a number of environment variables:
 *   SINGULAIRTY_BINDPATH: Mounts the necessary directories from the system,
     including /users, /project, /scratch and /flash so that you should be
     able to use your regular directories in the container.
+*   RUNSCRIPTS and RUNSCRIPTSPYTORCH: The directory with some sample
+    runscripts.
     
 Note that this container uses a Conda environment internally. When in
 the container, the command to activate the container is contained in the
@@ -48,7 +50,7 @@ files_to_copy = [
     ([local_docker], 'share/docker-defs/')    
 ]
 
-local_runscript_python="""
+local_runscript_python_simple="""
 #!/bin/bash -e
 
 # Start conda environment inside the container
@@ -61,8 +63,8 @@ python "\$@"
 
 postinstallcmds = [
     'mkdir -p %(installdir)s/runscripts',
-    f'cat >%(installdir)s/runscripts/python-conda <<EOF {local_runscript_python}EOF',
-    'chmod a+x %(installdir)s/runscripts/python-conda'
+    f'cat >%(installdir)s/runscripts/python-conda-simple <<EOF {local_runscript_python_simple}EOF',
+    'chmod a+x %(installdir)s/runscripts/python-conda-simple'
 ]
 
 sanity_check_paths = {
@@ -75,9 +77,11 @@ sanity_check_paths = {
 modextravars = {
     #'SIF':              '%(installdir)s/' + local_sif,
     #'SIFPYTORCH':       '%(installdir)s/' + local_sif,
-    'SINGULARITY_BIND': '/var/spool/slurmd:/var/spool/slurmd,/opt/cray:/opt/cray,/usr/lib64/libcxi.so.1:/usr/lib64/libcxi.so.1,' +
-                        '%(installdir)s/runscripts:/runscripts,' + 
-                        '/pfs,/scratch,/projappl,/project,/flash,/appl'
+    'RUNSCRIPTS':        '%(installdir)s/runscripts',
+    'RUNSCRIPTSPYTORCH': '%(installdir)s/runscripts',
+    'SINGULARITY_BIND':  '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
+                         '%(installdir)s/runscripts:/runscripts,' + 
+                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
 }
 
 modluafooter = f"""
