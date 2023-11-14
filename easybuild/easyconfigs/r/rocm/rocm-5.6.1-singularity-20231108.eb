@@ -61,8 +61,8 @@ sanity_check_paths = {
 
 modextravars = {
     # SIF variables currently set by a function via modluafooter.
-    #'SIF':              '%(installdir)s/' + local_sif,
-    #'SIFPYROCM':        '%(installdir)s/' + local_sif,
+    #'SIF':             '%(installdir)s/' + local_sif,
+    #'SIFPYROCM':       '%(installdir)s/' + local_sif,
     'SINGULARITY_BIND': '/var/spool/slurmd:/var/spool/slurmd,/opt/cray:/opt/cray,/usr/lib64/libcxi.so.1:/usr/lib64/libcxi.so.1,' +
                         '%(installdir)s/runscripts:/runscripts,' + 
                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
