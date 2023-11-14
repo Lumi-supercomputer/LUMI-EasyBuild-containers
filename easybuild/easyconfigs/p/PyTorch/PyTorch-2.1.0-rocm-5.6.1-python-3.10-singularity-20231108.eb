@@ -150,6 +150,7 @@ sanity_check_paths = {
 }
 
 modextravars = {
+    # SIF variables currently set by a function via modluafooter.
     #'SIF':              '%(installdir)s/' + local_sif,
     #'SIFPYTORCH':       '%(installdir)s/' + local_sif,
     'RUNSCRIPTS':        '%(installdir)s/runscripts',

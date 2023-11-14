@@ -69,7 +69,7 @@ Example (in an interactive session):
 
 ```
 salloc -N1 -pstandard-g -t 30:00
-module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity
+module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20231108
 srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 ```
@@ -91,7 +91,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb PyTorch-2.1.0-rocm-5.6.1-python-3.10-singularity.eb
+eb PyTorch-2.1.0-rocm-5.6.1-python-3.10-singularity-20231108.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
