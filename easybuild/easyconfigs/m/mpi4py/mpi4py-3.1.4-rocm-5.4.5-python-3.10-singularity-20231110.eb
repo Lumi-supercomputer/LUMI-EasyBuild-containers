@@ -22,6 +22,9 @@ The module defines a number of environment variables:
 *   SINGULAIRTY_BINDPATH: Mounts the necessary directories from the system,
     including /users, /project, /scratch and /flash so that you should be
     able to use your regular directories in the container.
+*   RUNSCRIPTS and RUNSCRIPTSMPI4PY: The directory with some sample
+    runscripts.
+
     
 Note that this container uses a Conda environment internally. When in
 the container, the command to activate the container is contained in the
@@ -48,7 +51,7 @@ files_to_copy = [
     ([local_docker], 'share/docker-defs/')    
 ]
 
-local_runscript_python="""
+local_runscript_python_simple="""
 #!/bin/bash -e
 
 # Start conda environment inside the container
@@ -61,8 +64,8 @@ python "\$@"
 
 postinstallcmds = [
     'mkdir -p %(installdir)s/runscripts',
-    f'cat >%(installdir)s/runscripts/python-conda <<EOF {local_runscript_python}EOF',
-    'chmod a+x %(installdir)s/runscripts/python-conda'
+    f'cat >%(installdir)s/runscripts/python-conda-simple <<EOF {local_runscript_python_simple}EOF',
+    'chmod a+x %(installdir)s/runscripts/python-conda-simple'
 ]
 
 sanity_check_paths = {
@@ -74,8 +77,10 @@ sanity_check_paths = {
 
 modextravars = {
     #'SIF':              '%(installdir)s/' + local_sif,
-    #'SIFMPI4PY':       '%(installdir)s/' + local_sif,
-    'SINGULARITY_BIND': '/var/spool/slurmd:/var/spool/slurmd,/opt/cray:/opt/cray,/usr/lib64/libcxi.so.1:/usr/lib64/libcxi.so.1,' +
+    #'SIFMPI4PY':        '%(installdir)s/' + local_sif,
+    'RUNSCRIPTS':       '%(installdir)s/runscripts',
+    'RUNSCRIPTSMPI4PY': '%(installdir)s/runscripts',
+    'SINGULARITY_BIND': '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
                         '%(installdir)s/runscripts:/runscripts,' + 
                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
 }
