@@ -82,7 +82,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb mpi4py-3.1.4-rocm-5.4.5-python-3.10-singularity.eb
+eb mpi4py-3.1.4-rocm-5.4.5-python-3.10-singularity-20231110.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor

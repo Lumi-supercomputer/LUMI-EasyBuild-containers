@@ -76,8 +76,9 @@ sanity_check_paths = {
 }
 
 modextravars = {
-    #'SIF':              '%(installdir)s/' + local_sif,
-    #'SIFMPI4PY':        '%(installdir)s/' + local_sif,
+    # SIF variables currently set by a function via modluafooter.
+    #'SIF':             '%(installdir)s/' + local_sif,
+    #'SIFMPI4PY':       '%(installdir)s/' + local_sif,
     'RUNSCRIPTS':       '%(installdir)s/runscripts',
     'RUNSCRIPTSMPI4PY': '%(installdir)s/runscripts',
     'SINGULARITY_BIND': '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
