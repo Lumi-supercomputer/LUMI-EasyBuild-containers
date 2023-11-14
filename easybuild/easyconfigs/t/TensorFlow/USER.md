@@ -34,7 +34,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
         including everything that is needed to access the project, scratch and flash
         file systems.
         
-    -   `RUNSCRIPTS` and `RUNSCRIPTSPYTORCH` contain the full path of the directory
+    -   `RUNSCRIPTS` and `RUNSCRIPTSTENSORFLOW` contain the full path of the directory
         containing some sample run scripts that can be used to run software in the 
         container, or as inspiration for your own variants.
         
@@ -62,7 +62,7 @@ Example (in an interactive session):
 
 ```
 salloc -N1 -pstandard-g -t 30:00
-module load LUMI TensorFlow/2.11.1-rocm-5.5.1-python-3.10-horovod-0.28.1
+module load LUMI TensorFlow/2.11.1-rocm-5.5.1-python-3.10-horovod-0.28.1-singularity-20231110
 srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
     -c 'import TODO'
 ```

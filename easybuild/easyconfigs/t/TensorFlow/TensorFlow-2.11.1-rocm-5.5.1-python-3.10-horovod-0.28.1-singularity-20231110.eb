@@ -75,13 +75,13 @@ sanity_check_paths = {
 }
 
 modextravars = {
-    #'SIF':              '%(installdir)s/' + local_sif,
-    #'SIFPYTORCH':       '%(installdir)s/' + local_sif,
-    'RUNSCRIPTS':        '%(installdir)s/runscripts',
-    'RUNSCRIPTSPYTORCH': '%(installdir)s/runscripts',
-    'SINGULARITY_BIND':  '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
-                         '%(installdir)s/runscripts:/runscripts,' + 
-                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
+    #'SIF':                  '%(installdir)s/' + local_sif,
+    #'SIFPYTORCH':           '%(installdir)s/' + local_sif,
+    'RUNSCRIPTS':           '%(installdir)s/runscripts',
+    'RUNSCRIPTSTENSORFLOW': '%(installdir)s/runscripts',
+    'SINGULARITY_BIND':     '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
+                            '%(installdir)s/runscripts:/runscripts,' + 
+                            '/pfs,/scratch,/projappl,/project,/flash,/appl'
 }
 
 modluafooter = f"""
