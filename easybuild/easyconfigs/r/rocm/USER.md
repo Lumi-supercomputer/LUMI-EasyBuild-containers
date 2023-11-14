@@ -40,7 +40,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb rocm-5.6.1-singularity.eb
+eb rocm-5.6.1-singularity-20231108.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor

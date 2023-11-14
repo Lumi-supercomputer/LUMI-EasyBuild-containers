@@ -1,11 +1,11 @@
 easyblock = 'MakeCp'
 
 name =          'rocm'
-version =       '5.5.3'
-versionsuffix = '-singularity'
+version =       '5.6.1'
+versionsuffix = '-singularity-20231108'
 
-local_sif=   'lumi-rocm-rocm-5.5.3-dockerhash-c8ca80b668cb.sif'
-local_docker='lumi-rocm-rocm-5.5.3.docker'
+local_sif=   'lumi-rocm-rocm-5.6.1-dockerhash-5a18a3a56890.sif'
+local_docker='lumi-rocm-rocm-5.6.1.docker'
 
 homepage = 'https://docs.amd.com/'
 
@@ -60,8 +60,9 @@ sanity_check_paths = {
 }
 
 modextravars = {
+    # SIF variables currently set by a function via modluafooter.
     #'SIF':              '%(installdir)s/' + local_sif,
-    #'SIFPYTORCH':       '%(installdir)s/' + local_sif,
+    #'SIFPYROCM':        '%(installdir)s/' + local_sif,
     'SINGULARITY_BIND': '/var/spool/slurmd:/var/spool/slurmd,/opt/cray:/opt/cray,/usr/lib64/libcxi.so.1:/usr/lib64/libcxi.so.1,' +
                         '%(installdir)s/runscripts:/runscripts,' + 
                         '/pfs,/scratch,/projappl,/project,/flash,/appl'

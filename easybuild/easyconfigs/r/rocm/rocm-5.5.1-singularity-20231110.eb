@@ -1,11 +1,11 @@
 easyblock = 'MakeCp'
 
 name =          'rocm'
-version =       '5.6.1'
-versionsuffix = '-singularity'
+version =       '5.5.1'
+versionsuffix = '-singularity-20231110'
 
-local_sif=   'lumi-rocm-rocm-5.6.1-dockerhash-ee3ae6a8ed6c.sif'
-local_docker='lumi-rocm-rocm-5.6.1.docker'
+local_sif =    'lumi-rocm-rocm-5.5.1-dockerhash-c148c989cc31.sif'
+local_docker = 'lumi-rocm-rocm-5.5.1.docker'
 
 homepage = 'https://docs.amd.com/'
 
@@ -60,11 +60,12 @@ sanity_check_paths = {
 }
 
 modextravars = {
+    # SIF variables currently set by a function via modluafooter.
     #'SIF':              '%(installdir)s/' + local_sif,
-    #'SIFPYTORCH':       '%(installdir)s/' + local_sif,
-    'SINGULARITY_BIND': '/var/spool/slurmd:/var/spool/slurmd,/opt/cray:/opt/cray,/usr/lib64/libcxi.so.1:/usr/lib64/libcxi.so.1,' +
-                        '%(installdir)s/runscripts:/runscripts,' + 
-                        '/pfs,/scratch,/projappl,/project,/flash,/appl'
+    #'SIFPYROCM':        '%(installdir)s/' + local_sif,
+    'SINGULARITY_BIND':  '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
+                         '%(installdir)s/runscripts:/runscripts,' + 
+                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
 }
 
 modluafooter = f"""
