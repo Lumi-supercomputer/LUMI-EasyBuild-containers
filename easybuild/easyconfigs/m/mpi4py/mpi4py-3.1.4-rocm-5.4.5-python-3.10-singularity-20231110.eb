@@ -2,10 +2,10 @@ easyblock = 'MakeCp'
 
 name =          'mpi4py'
 version =       '3.1.4'
-versionsuffix = '-rocm-5.4.5-python-3.10-singularity'
+versionsuffix = '-rocm-5.4.5-python-3.10-singularity-20231110'
 
-local_sif=   'lumi-mpi4py-rocm-5.4.5-python-3.10-mpi4py-3.1.4-dockerhash-23f43e1830ea.sif'
-local_docker='lumi-mpi4py-rocm-5.4.5-python-3.10-mpi4py-3.1.4.docker'
+local_sif =    'lumi-mpi4py-rocm-5.4.5-python-3.10-mpi4py-3.1.4-dockerhash-7fd741532a9f.sif'
+local_docker = 'lumi-mpi4py-rocm-5.4.5-python-3.10-mpi4py-3.1.4.docker'
 
 homepage = 'https://github.com/mpi4py/mpi4py'
 
