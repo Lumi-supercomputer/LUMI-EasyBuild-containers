@@ -81,7 +81,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb TensorFlow-2.11.1-rocm-5.5.1-python-3.10-horovod-0.28.1.eb
+eb TensorFlow-2.11.1-rocm-5.5.1-python-3.10-horovod-0.28.1-singularity-20231110.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
