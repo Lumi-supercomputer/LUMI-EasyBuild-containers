@@ -34,6 +34,23 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
         including everything that is needed to access the project, scratch and flash
         file systems.
         
+    -   `RUNSCRIPTS` and `RUNSCRIPTSPYTORCH` contain the full path of the directory
+        containing some sample run scripts that can be used to run software in the 
+        container, or as inspiration for your own variants.
+        
+3.  It creates 3 scripts in the $RUNSCRIPTS directory:
+
+    -   `conda-python-simple`: This initialises Python in the container and then calls Python
+        with the arguments of `conda-python-simple`. It can be used, e.g., to run commands
+        through Python that utilise a single task but all GPUs.
+        
+    -   `conda-python-distributed`: Model script that initialises Python in the container
+        and also creates the environment to run a distributed PyTorch session. 
+        At the end, it will call Python with the arguments of the `conda-python-distributed`
+        command.
+        
+    -   `get-master`: A helper command for `conda-python-distributed`.
+        
 The container uses a miniconda environment in which Python and its packages are installed.
 That environment needs to be activated in the container when running, which can be done
 with the command that is available in the container as the environment variable
@@ -51,11 +68,14 @@ does additional initialisations.
 Example (in an interactive session):
 
 ```
-module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity
 salloc -N1 -pstandard-g -t 30:00
-srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda \
+module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity
+srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 ```
+
+This command will start Python and run PyTorch on a single CPU core with access to
+all 8 GPUs.
 
 After loading the module, the docker definition file used when building the container
 is available in the `$EBROOTPYTORCH/share/docker-defs` subdirectory. As it requires some
