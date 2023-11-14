@@ -31,6 +31,16 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
     -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
+
+    -   `RUNSCRIPTS` and `RUNSCRIPTSALPHAFOLD` contain the full path of the directory
+        containing some sample run scripts that can be used to run software in the 
+        container, or as inspiration for your own variants.
+        
+3.  It creates currently 1 script in the $RUNSCRIPTS directory:
+
+    -   `conda-python-simple`: This initialises Python in the container and then calls Python
+        with the arguments of `conda-python-simple`. It can be used, e.g., to run commands
+        through Python that utilise a single task but all GPUs.
         
 The container uses a miniconda environment in which Python and its packages are installed.
 That environment needs to be activated in the container when running, which can be done
@@ -49,9 +59,9 @@ does additional initialisations.
 Example (in an interactive session):
 
 ```
-module load LUMI AlphaFold/69afc4d-rocm-5.5.1-python-3.9-singularity
 salloc -N1 -pstandard-g -t 30:00
-srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda \
+module load LUMI AlphaFold/69afc4d-rocm-5.5.1-python-3.9-singularity-20231108
+srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
     -c 'TODO'
 ```
 
