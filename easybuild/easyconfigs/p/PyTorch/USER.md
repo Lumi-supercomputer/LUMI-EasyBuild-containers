@@ -49,6 +49,9 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
         At the end, it will call Python with the arguments of the `conda-python-distributed`
         command.
         
+    -   `conda-torchrun`: Model script similar to `conda-python-distributed`, but calling 
+        the `torchrun` command in the container rather than `python`.
+        
     -   `get-master`: A helper command for `conda-python-distributed`.
         
 The container uses a miniconda environment in which Python and its packages are installed.
@@ -58,10 +61,10 @@ with the command that is available in the container as the environment variable
 `source /opt/miniconda3/bin/activate pytorch`).
 
 The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
-the wrapper script `/runscripts/python-conda` to start the Python command from the
+the wrapper script `/runscripts/conda-python` to start the Python command from the
 conda environment in the container. That script is also available outside the 
 container for inspection after loading the module as
-`$EBROOTPYTORCH/runscripts/python-conda` and you can use that script as a source
+`$EBROOTPYTORCH/runscripts/conda-python` and you can use that script as a source
 of inspiration to develop a script that more directly executes your commands or
 does additional initialisations.
 
@@ -70,7 +73,7 @@ Example (in an interactive session):
 ```
 salloc -N1 -pstandard-g -t 30:00
 module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20231108
-srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
+srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/conda-python-simple \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 ```
 
