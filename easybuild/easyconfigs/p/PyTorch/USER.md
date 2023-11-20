@@ -38,7 +38,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
         containing some sample run scripts that can be used to run software in the 
         container, or as inspiration for your own variants.
         
-3.  It creates 3 scripts in the $RUNSCRIPTS directory:
+3.  It creates 4 scripts in the $RUNSCRIPTS directory:
 
     -   `conda-python-simple`: This initialises Python in the container and then calls Python
         with the arguments of `conda-python-simple`. It can be used, e.g., to run commands
@@ -52,19 +52,19 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
     -   `conda-torchrun`: Model script similar to `conda-python-distributed`, but calling 
         the `torchrun` command in the container rather than `python`.
         
-    -   `get-master`: A helper command for `conda-python-distributed`.
+    -   `get-master`: A helper command for `conda-python-distributed` and `conda-torchrun`.
         
 The container uses a miniconda environment in which Python and its packages are installed.
 That environment needs to be activated in the container when running, which can be done
 with the command that is available in the container as the environment variable
-`WITH_CONDA` (which for this container is
+`WITH_CONDA` (which for this container it is
 `source /opt/miniconda3/bin/activate pytorch`).
 
 The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
-the wrapper script `/runscripts/conda-python` to start the Python command from the
-conda environment in the container. That script is also available outside the 
-container for inspection after loading the module as
-`$EBROOTPYTORCH/runscripts/conda-python` and you can use that script as a source
+several wrapper scripts to start Python or torchrun from the
+conda environment in the container. Those scripts are also available outside the 
+container for inspection after loading the module in the 
+`$RUNSCRIPTS` subdirectory and you can use those scripts as a source
 of inspiration to develop a script that more directly executes your commands or
 does additional initialisations.
 
