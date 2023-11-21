@@ -31,6 +31,10 @@ the container, the command to activate the container is contained in the
 environment variable WITH_CONDA.
 """
 
+docurls = [
+    'mpi4py web-based manual: https://mpi4py.readthedocs.io/en/'
+]
+
 toolchain = SYSTEM
 
 sources = [
