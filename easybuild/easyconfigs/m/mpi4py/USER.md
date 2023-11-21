@@ -1,12 +1,13 @@
 # mpi4py container user instructions
 
-**BETA VERSION and there are still problems with some containers.**
+**BETA VERSION, problems may occur and may not be solved quickly, 
+and the documentation needs further development.**
 
 The mpi4py container is developed by AMD specifically for LUMI and contains the
 necessary parts to run mpi4py on LUMI, including a suitable version of ROCm for the version of mpi4py.
 The container also contains cupy and is also built to support GPU-aware MPI.
 
-The EasyBuild installation with the EasyConfigs mentioned below will do two things:
+The EasyBuild installation with the EasyConfigs mentioned below will do three things:
 
 1.  It will copy the container to your own file space. We realise containers can be
     big, but it ensures that you have complete control over when a container is
@@ -51,11 +52,11 @@ with the command that is available in the container as the environment variable
 The container also includes some of the OSU MPI benchmarks in `/opt/osu` to check if
 the MPI implementation functions.
 
-The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
-the wrapper script `/runscripts/python-conda` to start the Python command from the
+The container (when used with `SINGULARITY_BINDPATH` of the module) provides
+the wrapper script `/runscripts/conda-python-simple` to start the Python command from the
 conda environment in the container. That script is also available outside the 
 container for inspection after loading the module as
-`$EBROOTMPI4PY/runscripts/python-conda` and you can use that script as a source
+`$RUNSCRIPTS/conda-python-simple` and you can use that script as a source
 of inspiration to develop a script that more directly executes your commands or
 does additional initialisations.
 
@@ -65,8 +66,11 @@ Example (in an interactive session):
 module load LUMI mpi4py/2.1.0-rocm-5.6.1-python-3.10-singularity-20231110
 salloc -N1 -pstandard-g -t 30:00
 srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
-    -c 'import TODO'
+    -c 'import mpi4py'
 ```
+
+(which is a dumb example as it is using only one task, but enough to check if the
+package can at least be loaded correctly).
 
 After loading the module, the docker definition file used when building the container
 is available in the `$EBROOTMPI4PY/share/docker-defs` subdirectory. As it requires some
@@ -89,3 +93,10 @@ To use the container after installation, the `EasyBuild-user` module is not need
 is the `container` partition. The module will be available in all versions of the LUMI stack
 and in [the `CrayEnv` stack](https://docs.lumi-supercomputer.eu/runjobs/lumi_env/softwarestacks/#crayenv)
 (provided the environment variable `EBU_USER_PREFIX` points to the right location).
+
+
+## Further links
+
+-   [mpi4py documentation](https://mpi4py.readthedocs.io/en/)
+
+
