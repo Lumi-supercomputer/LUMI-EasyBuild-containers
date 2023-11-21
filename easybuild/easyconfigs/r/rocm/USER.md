@@ -1,10 +1,13 @@
 # PyTorch container user instructions
 
-**BETA VERSION and there are still problems with some containers.**
+**BETA VERSION, problems are possible and they may not be solved quickly.**
 
 The rocm container is developed by AMD specifically for LUMI and contains the
 necessary parts explore ROCm. The use is rather limited at the moment as there
-is no easy way to build upon an existing container on LUMI.
+is no easy way to build upon an existing container on LUMI. However, from
+a shell in the container you can access both the newer ROCm version in the container
+and Cray PE which is hosted outside of the container, and read and write from all
+your regular directories.
 
 The EasyBuild installation with the EasyConfigs mentioned below will do two things:
 
