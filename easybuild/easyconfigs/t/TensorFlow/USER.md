@@ -1,13 +1,14 @@
 # PyTorch container user instructions
 
-**BETA VERSION and there are still problems with some containers.**
+**BETA VERSION, problems may occur and may not be solved quickly, 
+and the documentation needs further development.**
 
 The TensorFlow container is developed by AMD specifically for LUMI and contains the
 necessary parts to run TensorFlow on LUMI, including the plugin needed for RCCL when
 doing distributed AI, and a suitable version of ROCm for the version of TensorFlow.
-Horovod is also provided.
+Horovod is also provided, with support for Cray MPI.
 
-The EasyBuild installation with the EasyConfigs mentioned below will do two things:
+The EasyBuild installation with the EasyConfigs mentioned below will do three things:
 
 1.  It will copy the container to your own file space. We realise containers can be
     big, but it ensures that you have complete control over when a container is
@@ -35,7 +36,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
         file systems.
         
     -   `RUNSCRIPTS` and `RUNSCRIPTSTENSORFLOW` contain the full path of the directory
-        containing some sample run scripts that can be used to run software in the 
+        containing some sample run script(s) that can be used to run software in the 
         container, or as inspiration for your own variants.
         
 3.  It creates currently 1 script in the $RUNSCRIPTS directory:
@@ -51,10 +52,10 @@ with the command that is available in the container as the environment variable
 `source /opt/miniconda3/bin/activate tensorflow`).
 
 The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
-the wrapper script `/runscripts/python-conda` to start the Python command from the
+the wrapper script `/runscripts/conda-python-simple` to start the Python command from the
 conda environment in the container. That script is also available outside the 
 container for inspection after loading the module as
-`$EBROOTTENSORFLOW/runscripts/python-conda` and you can use that script as a source
+`$RUNSCRIPTS/conda-python-simple` and you can use that script as a source
 of inspiration to develop a script that more directly executes your commands or
 does additional initialisations.
 
@@ -64,8 +65,11 @@ Example (in an interactive session):
 salloc -N1 -pstandard-g -t 30:00
 module load LUMI TensorFlow/2.11.1-rocm-5.5.1-python-3.10-horovod-0.28.1-singularity-20231110
 srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
-    -c 'import TODO'
+    -c 'import tensorflow'
 ```
+(and the warning shown about being built with the oneAPI Deep Neural Network Library
+is just a warning, as AVX2 and FMA are indeed the instructions that should be used 
+on the LUMI CPUs).
 
 After loading the module, the docker definition file used when building the container
 is available in the `$EBROOTTENSORFLOW/share/docker-defs` subdirectory. As it requires some
