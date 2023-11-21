@@ -1,13 +1,14 @@
 # AlphaFold container user instructions
 
-**BETA VERSION and there are still problems with some containers.**
+**BETA VERSION, problems may occur and may not be solved quickly, 
+and the documentation needs further development.**
 
 The AlphaFold container is developed by AMD specifically for LUMI and contains the
 necessary parts to run AlphaFold on LUMI, including a suitable version of ROCm for the version of AlphaFold.
 The container includes the dependencies of AlphaFold, including TensorFlow,
 JAX, aria2 and OpenMM with HIP support.
 
-The EasyBuild installation with the EasyConfigs mentioned below will do two things:
+The EasyBuild installation with the EasyConfigs mentioned below will do three things:
 
 1.  It will copy the container to your own file space. We realise containers can be
     big, but it ensures that you have complete control over when a container is
@@ -49,10 +50,10 @@ with the command that is available in the container as the environment variable
 `source /opt/miniconda3/bin/activate alphafold`).
 
 The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
-the wrapper script `/runscripts/python-conda` to start the Python command from the
+the wrapper script `/runscripts/conda-python-simple` to start the Python command from the
 conda environment in the container. That script is also available outside the 
 container for inspection after loading the module as
-`$EBROOTALPHAFOLD/runscripts/python-conda` and you can use that script as a source
+`$RUNSCRIPTS/conda-python-simple` and you can use that script as a source
 of inspiration to develop a script that more directly executes your commands or
 does additional initialisations.
 
@@ -62,8 +63,13 @@ Example (in an interactive session):
 salloc -N1 -pstandard-g -t 30:00
 module load LUMI AlphaFold/69afc4d-rocm-5.5.1-python-3.9-singularity-20231108
 srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
-    -c 'TODO'
+    -c 'import numpy'
 ```
+
+The LUMI User Support Team cannot know all programs that users might use and none
+of the team members is an expert in AlphaFold. This container is 
+originally developed for a specific project and provided as-is until a user 
+contributes to its documentation.
 
 After loading the module, the docker definition file used when building the container
 is available in the `$EBROOTALPHAFOLD/share/docker-defs` subdirectory. As it requires some
