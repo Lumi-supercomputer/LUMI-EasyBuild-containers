@@ -1,6 +1,6 @@
 # PyTorch container user instructions
 
-**BETA VERSION and there are still problems with some containers.**
+**BETA VERSION, problems may occur and may not be solved quickly.**
 
 The PyTorch container is developed by AMD specifically for LUMI and contains the
 necessary parts to run PyTorch on LUMI, including the plugin needed for RCCL when
