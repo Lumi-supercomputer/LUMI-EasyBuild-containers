@@ -49,7 +49,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
         At the end, it will call Python with the arguments of the `conda-python-distributed`
         command.
         
-    -   `get-master`: A helper command for `conda-python-distributed` and `conda-torchrun`.
+    -   `get-master`: A helper command for `conda-python-distributed`.
         
 The container uses a miniconda environment in which Python and its packages are installed.
 That environment needs to be activated in the container when running, which can be done
@@ -58,7 +58,7 @@ with the command that is available in the container as the environment variable
 `source /opt/miniconda3/bin/activate pytorch`).
 
 The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
-several wrapper scripts to start Python or torchrun from the
+several wrapper scripts to start Python from the
 conda environment in the container. Those scripts are also available outside the 
 container for inspection after loading the module in the 
 `$RUNSCRIPTS` subdirectory and you can use those scripts as a source
