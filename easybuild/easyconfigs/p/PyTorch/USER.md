@@ -38,7 +38,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
         containing some sample run scripts that can be used to run software in the 
         container, or as inspiration for your own variants.
         
-3.  It creates 4 scripts in the $RUNSCRIPTS directory:
+3.  It creates 3 scripts in the $RUNSCRIPTS directory:
 
     -   `conda-python-simple`: This initialises Python in the container and then calls Python
         with the arguments of `conda-python-simple`. It can be used, e.g., to run commands
@@ -48,9 +48,6 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
         and also creates the environment to run a distributed PyTorch session. 
         At the end, it will call Python with the arguments of the `conda-python-distributed`
         command.
-        
-    -   `conda-torchrun`: Model script similar to `conda-python-distributed`, but calling 
-        the `torchrun` command in the container rather than `python`.
         
     -   `get-master`: A helper command for `conda-python-distributed` and `conda-torchrun`.
         
