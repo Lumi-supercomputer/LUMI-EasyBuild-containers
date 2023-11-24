@@ -57,6 +57,22 @@ with the command that is available in the container as the environment variable
 `WITH_CONDA` (which for this container it is
 `source /opt/miniconda3/bin/activate pytorch`).
 
+Example of the use of `WITH_CONDA`: Check the Python packages in the container
+in an interactive session:
+
+```
+module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20231123
+singularity shell $SIF
+```
+
+which takes you in the container, and then in the container, at the `Singularity>` 
+prompt:
+
+```
+$WITH_CONDA
+pip list
+```
+
 The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
 several wrapper scripts to start Python from the
 conda environment in the container. Those scripts are also available outside the 
@@ -69,7 +85,7 @@ Example (in an interactive session):
 
 ```
 salloc -N1 -pstandard-g -t 30:00
-module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20231108
+module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20231123
 srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/conda-python-simple \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 ```
@@ -91,7 +107,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb PyTorch-2.1.0-rocm-5.6.1-python-3.10-singularity-20231108.eb
+eb PyTorch-2.1.0-rocm-5.6.1-python-3.10-singularity-20231123.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
