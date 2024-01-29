@@ -2,10 +2,10 @@ easyblock = 'MakeCp'
 
 name =          'rocm'
 version =       '5.4.6'
-versionsuffix = '-singularity-20231110'
+versionsuffix = '-singularity-20240124'
 
-local_sif =    'lumi-rocm-rocm-5.4.6-dockerhash-ee04f2306dd1.sif'
-local_docker = 'lumi-rocm-rocm-5.4.6.docker'
+local_sif =    'lumi-rocm-rocm-5.4.6-dockerhash-087126ecfe42.sif'
+#local_docker = 'lumi-rocm-rocm-5.4.6.docker'
 
 homepage = 'https://docs.amd.com/'
 
@@ -39,17 +39,17 @@ sources = [
         'filename':    local_sif,
         'extract_cmd': '/bin/cp %s .'
     },
-    {
-        'filename':    local_docker,
-        'extract_cmd': '/bin/cp %s .'
-    },
+#    {
+#        'filename':    local_docker,
+#        'extract_cmd': '/bin/cp %s .'
+#    },
 ]
 
 skipsteps = ['build']
 
 files_to_copy = [
     ([local_sif],    '.'),
-    ([local_docker], 'share/docker-defs/')    
+#    ([local_docker], 'share/docker-defs/')    
 ]
 
 postinstallcmds = [

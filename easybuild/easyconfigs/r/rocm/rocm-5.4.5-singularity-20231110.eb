@@ -52,11 +52,15 @@ files_to_copy = [
     ([local_docker], 'share/docker-defs/')    
 ]
 
+postinstallcmds = [
+    'mkdir -p %(installdir)s/share/docker-defs',  # Simply to have something to test.    
+]
+
 sanity_check_paths = {
     # We deliberately don't check for local_sif as the user is allowed to remove that file
     # but may still want to regenerate the module which would then fail in the sanity check.
     'files': [],
-    'dirs':  [],
+    'dirs':  ['share'],
 }
 
 modextravars = {
