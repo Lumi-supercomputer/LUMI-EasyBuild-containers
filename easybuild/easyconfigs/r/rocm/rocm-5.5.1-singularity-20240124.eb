@@ -1,0 +1,80 @@
+easyblock = 'MakeCp'
+
+name =          'rocm'
+version =       '5.5.1'
+versionsuffix = '-singularity-20240124'
+
+local_sif =    'lumi-rocm-rocm-5.5.1-dockerhash-a50bdb9b0bf8.sif'
+#local_docker = 'lumi-rocm-rocm-5.5.1.docker'
+
+homepage = 'https://docs.amd.com/'
+
+whatis = [
+    "Description: AMD ROCm is the first open-source software development platform for "
+    "HPC/Hyperscale-class GPU computing"
+]
+
+description = """
+This module provides a container with ROCm %(version)s. 
+
+The module defines a number of environment variables:
+*   SIF and SIFPYTORCH: The full path and name of the Singularity SIF file 
+    to use with singularity exec etc.
+*   SINGULAIRTY_BINDPATH: Mounts the necessary directories from the system,
+    including /users, /project, /scratch and /flash so that you should be
+    able to use your regular directories in the container.
+    
+As this container only contains ROCm and the basic tools to build, it is
+of relatively limited use.
+
+Note that there is no guarantee that this container will play nice with
+Cray MPICH. Some older versions of Cray MPICH are broken with much newer
+versions of ROCm.
+"""
+
+toolchain = SYSTEM
+
+sources = [
+    {
+        'filename':    local_sif,
+        'extract_cmd': '/bin/cp %s .'
+    },
+#    {
+#        'filename':    local_docker,
+#        'extract_cmd': '/bin/cp %s .'
+#    },
+]
+
+skipsteps = ['build']
+
+files_to_copy = [
+    ([local_sif],    '.'),
+#    ([local_docker], 'share/docker-defs/')    
+]
+
+postinstallcmds = [
+    'mkdir -p %(installdir)s/share/docker-defs',  # Simply to have something to test.    
+]
+
+sanity_check_paths = {
+    # We deliberately don't check for local_sif as the user is allowed to remove that file
+    # but may still want to regenerate the module which would then fail in the sanity check.
+    'files': [],
+    'dirs':  ['share'],
+}
+
+modextravars = {
+    # SIF variables currently set by a function via modluafooter.
+    #'SIF':              '%(installdir)s/' + local_sif,
+    #'SIFPYROCM':        '%(installdir)s/' + local_sif,
+    'SINGULARITY_BIND':  '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
+                         '%(installdir)s/runscripts:/runscripts,' + 
+                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
+}
+
+modluafooter = f"""
+-- Call a routine to set the various environment variables.
+create_container_vars( '{local_sif}', 'rocm', '%(installdir)s' )
+"""
+
+moduleclass = 'devel'
