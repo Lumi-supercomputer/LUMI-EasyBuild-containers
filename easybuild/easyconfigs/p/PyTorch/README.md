@@ -4,11 +4,28 @@
 
 -   The Python, PyTorch and ROCm versions are included in the version of the module.
 
+-   To find the version of Python packages,
+
+    ```
+    singularity exec $SIF bash -c '$WITH_CONDA ; pip list'
+    ```
+    
+    after loading the module. This can even be done on the login nodes.
+    It will return information about all Python packages.
+
 -   Deepspeed: 
 
     -   Leaves a script 'deepspeed' in `/opt/miniconda3/envs/pytorch/bin`
     
     -   Leaves packages in `/opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/deepspeed`
+    
+    -   Finding the version:
+    
+        ```
+        singularity exec $SIF bash -c '$WITH_CONDA ; pip list | grep deepspeed'
+        ```
+    
+        or the clumsy way without `pip`: 
     
         ```
         singularity exec $SIF bash -c \
@@ -23,7 +40,13 @@
     -   Leaves a `flash_attn` and corresponding `flash_attn-<version>.dit-info` subdirectory 
         in `/opt/miniconda3/envs/pytorch/lib/python3.10/site-packages`.
 
-    -   Also works:
+    -   To find the version:
+    
+        ```
+        singularity exec $SIF bash -c '$WITH_CONDA ; pip list | grep flash-attn'
+        ```
+    
+        or the clumsy way without `pip:
     
         ```
         singularity exec $SIF bash -c \
@@ -41,4 +64,30 @@
       singularity exec $SIF /runscripts/conda-python-simple \
       -u /opt/wheels/flash_attn-benchmarks/benchmark_flash_attention.py
     ```
+
+-   xformers:
+
+    -   Leaves a `xformers` and corresponding `xformers-<version>.disti-info` subdirectory    
+        in `/opt/miniconda3/envs/pytorch/lib/python3.10/site-packages`.
     
+    -   To find the version:
+    
+        ```
+        singularity exec $SIF bash -c '$WITH_CONDA ; pip list | grep xformers'
+        ```
+    
+        or the clumsy way without `pip`:
+    
+        ```
+        singularity exec $SIF bash -c \
+          'grep "__version__" /opt/miniconda3/envs/pytorch/lib/python3.10/site-packages/xformers/version.py'
+        ```
+        
+        (Test can be done after loading the module on a login node.)
+        
+    -   Checking the features of `xformers`: 
+    
+        ```
+        singularity exec $SIF bash -c '$WITH_CONDA ; python -m xformers.info'
+        ```
+        
