@@ -1,48 +1,33 @@
 # LUMI-EasyBuild-containers
 
-Temporary way of working until all TODOs below are implemented:
+This is a repository with EasyConfig files that make using the containers provided
+through `/appl/local/containers` easier and safer.
 
-```
-module load LUMI/22.12 partition/G
-module load EasyBuild-user
-EASYBUILD_SOURCEPATH=$EASYBUILD_SOURCEPATH:<directory with .sif files>
-eb PyTorch-2.0.1-rocm-5.5.1-python-3.10-singularity.eb
-```
+Most EasyConfigs will not only create a module that sets appropriate bindings
+so that they don't have to be added by hand, but will also copy the container
+file to your local installation directory.
 
-The partition doesn't really matter as long as the same one is used when
-running as we do not need specific compiler settings, but since the AMD
-containers are for the GPUs it is only logical to install them in
-partition/G.
-
-Running then goes like:
-
-```
-module load LUMI/22.12 partition/G
-module load PyTorch-2.0.1-rocm-5.5.1-python-3.10-singularity.eb
-salloc -N1 -pstandard-g -t 30:00
-srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda \
-    -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
-```
+We realise those files can be big. Whenever indicated in the documentation
+for the container, you can remove these files. But this is at the rist of the
+user: There is no guarantee that the container will remain available in the
+system directories. Container images are removed when they are simply old and
+several newer versions are available, or when we know that there are problems
+with them that are solved in newer versions.
 
 
-## TODO for this to function
+## Developing new EasyConfigs
 
--   Write a routine that produces the path to the SIF files.
-    
-    -   Motivation: We want to be able to test completely independently from 
-        /appl/local/containers to test out new concepts.
-        
--   Write a routine that can be used in the modulefiles to set SIF to 
-    either the one in the installation directory, of if that one is missing,
-    the one in the container repository.
-    
--   Adapt the EasyBuild-user module to search for containers in the container
-    repository (which is adding a directory to the SOURCEPATH).
-    
--   Additional hidden partition "container" to install the container modules,
-    and always load that directory. This is because we assume that containers
-    are independent of any particular LUMI toolchain and should even be available
-    in CrayEnv.
+All development work should be done on a clone of the repositories, and to reduce 
+the risk of accidentally removing an image file in /appl/local/containers/easybuild-sif-images,
+a "clone" of this directory is made containing links to the image files in the main
+repository. To this end we provide the script `link_images.sh` in the script directory
+of this repository. It is sufficient to run that script from within the repository
+to create or update that image directory. It will only update links and not replace
+regular files that are placed in that directory.
 
--   Adapt the CrayEnv module and partition module to make the containers available.
-
+All this is best combined with a clone of the software stack also for development,
+but it is not necessary. It is necessory though to tell the EasyBuild configuration
+modules where the repository can images can be found, and that is done by setting
+the environment variable `LUMI_CONTAINER_REPOSITORY_ROOT` to the directory that
+contains the clone of `LUMI-EasyBuild-containers` and the `easybuild-sif-images`
+clone before loading those configuration modules.
