@@ -9,6 +9,14 @@ a shell in the container you can access both the newer ROCm version in the conta
 and Cray PE which is hosted outside of the container, and read and write from all
 your regular directories.
 
+**It is entirely normal that some features in some of the containers will not work.
+Each ROCm driver supports only particular versions of packages. E.g., the ROCm 
+driver from ROCm 5.2.3 is only guaranteed to support ROCm versions up to and including 5.4
+and hence problems can be expected with ROCm 5.5 and newer. There is nothing LUMI
+support can do about it. Only one driver version can be active on the system,
+and installing a newer version depends on other software on the system also and
+is not as trivial as it would be on a PC.**
+
 The EasyBuild installation with the EasyConfigs mentioned below will do two things:
 
 1.  It will copy the container to your own file space. We realise containers can be
@@ -33,7 +41,28 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
     -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
-        
+
+3.  It will create the `runscripts` subdirectory in the installation directory that 
+    can be used to store scripts that should be available in the container, and the
+    `bin` subdirectory for scripts that run outside the container.
+
+    Currently there is one script outside the container: `start-shell` will start a
+    bash session in the container, and can take arguments just as bash. It is provided
+    for consistency with planned future extensions of some other containers, but really
+    doesn't do much more than calling
+
+    ```
+    singularity exec $SIFROCM bash
+    ```
+
+    and passing it the arguments that were given to the command.
+
+    **Note that the installation directory is fully erased when you re-install the 
+    container module using EasyBuild. So if you chose to use it to add scripts, make
+    sure you store them elsewhere also so that they can be copied again if you 
+    rebuild the container module for some reason.**
+
+
 
 ## Installation
 
