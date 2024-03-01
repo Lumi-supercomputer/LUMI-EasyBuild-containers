@@ -18,7 +18,7 @@ description = """
 This module provides a container with ROCm %(version)s. 
 
 The module defines a number of environment variables:
-*   SIF and SIFPYTORCH: The full path and name of the Singularity SIF file 
+*   SIF and SIFROCM: The full path and name of the Singularity SIF file 
     to use with singularity exec etc.
 *   SINGULAIRTY_BINDPATH: Mounts the necessary directories from the system,
     including /users, /project, /scratch and /flash so that you should be
@@ -52,21 +52,40 @@ files_to_copy = [
     ([local_docker], 'share/docker-defs/')    
 ]
 
+local_bin_start_shell="""
+#!/bin/bash -e
+
+# Run application
+if [[ -f "/.singularity.d/Singularity" ]] 
+then
+    # In a singularity container, just in case a user would add this to the path.
+    exec bash "\$@"
+else
+    # Not yet in the container
+    singularity exec \$SIFROCM bash "\$@"
+fi
+
+"""
+
 postinstallcmds = [
+    'mkdir -p %(installdir)s/runscripts',         # Even though still empty, it allows uniform mounts for all containers.
     'mkdir -p %(installdir)s/share/docker-defs',  # Simply to have something to test.    
+    'mkdir -p %(installdir)s/bin',
+    f'cat >%(installdir)s/bin/start-shell <<EOF {local_bin_start_shell}EOF',
+    'chmod a+x %(installdir)s/bin/start-shell',
 ]
 
 sanity_check_paths = {
     # We deliberately don't check for local_sif as the user is allowed to remove that file
     # but may still want to regenerate the module which would then fail in the sanity check.
-    'files': [],
-    'dirs':  ['share'],
+    'files': ['bin/start-shell'],
+    'dirs':  [],
 }
 
 modextravars = {
     # SIF variables currently set by a function via modluafooter.
     #'SIF':              '%(installdir)s/' + local_sif,
-    #'SIFPYROCM':        '%(installdir)s/' + local_sif,
+    #'SIFROCM':         '%(installdir)s/' + local_sif,
     'SINGULARITY_BIND':  '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
                          '%(installdir)s/runscripts:/runscripts,' + 
                          '/pfs,/scratch,/projappl,/project,/flash,/appl'
