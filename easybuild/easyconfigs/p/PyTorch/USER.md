@@ -7,7 +7,7 @@ necessary parts to run PyTorch on LUMI, including the plugin needed for RCCL whe
 doing distributed AI, and a suitable version of ROCm for the version of PyTorch.
 The apex, torchvision, torchdata, torchtext and torchaudio packages are also included.
 
-The EasyBuild installation with the EasyConfigs mentioned below will do two things:
+The EasyBuild installation with the EasyConfigs mentioned below will do three things:
 
 1.  It will copy the container to your own file space. We realise containers can be
     big, but it ensures that you have complete control over when a container is
@@ -94,7 +94,8 @@ This command will start Python and run PyTorch on a single CPU core with access 
 all 8 GPUs.
 
 After loading the module, the docker definition file used when building the container
-is available in the `$EBROOTPYTORCH/share/docker-defs` subdirectory. As it requires some
+is available in the `$EBROOTPYTORCH/share/docker-defs` subdirectory (but not for all
+versions). As it requires some
 licensed components from LUMI and some other files that are not included, it currently
 cannot be used to reconstruct the container and extend its definition.
 
