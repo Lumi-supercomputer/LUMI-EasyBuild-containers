@@ -73,7 +73,7 @@ files_to_copy = [
 # Code for scripts in the bin subdirectory
 #
 
-local_bin_start_shell="""
+local_bin_start_shell = """
 #!/bin/bash -e
 
 # Run application
@@ -91,6 +91,14 @@ else
         singularity exec \$SIFPYTORCH bash "\$@"
     fi
 fi
+
+"""
+
+local_bin_make_squashfs = """
+#!/bin/bash -e
+
+cd "%(installdir)s"
+mksquashfs user-software user-software.squashfs -processors 1 -no-progress |& grep -v Unrecognised
 
 """
 
@@ -190,19 +198,33 @@ if __name__ == '__main__':
 """
 
 #
+# An example of how some installations can be further automated.
+# The empty line at the end is important because of the way we generate the file
+# for use in the container.
+#
+local_pip_requirements = """
+lightning-utilities
+torchmetrics
+pytorch-lightning
+
+"""
+
+#
 # Now install does scripts and do further preparations of the container.
 #
 
 local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' + \
                          '%(installdir)s/runscripts:/runscripts,' + \
-                         '/pfs,/scratch,/projappl,/project,/flash,/appl' + \
-                         ',%(installdir)s/user-software:/user-software'
+                         '/pfs,/scratch,/projappl,/project,/flash,/appl' # + \
+#                         ',%(installdir)s/user-software.squashfs:/user-software2:image-src=/'
 
 postinstallcmds = [
     # Install the scripts in the bin subdirectory
     'mkdir -p %(installdir)s/bin',
     f'cat >%(installdir)s/bin/start-shell <<EOF {local_bin_start_shell}EOF',
     'chmod a+x %(installdir)s/bin/start-shell',    
+    f'cat >%(installdir)s/bin/make-squashfs <<EOF {local_bin_make_squashfs}EOF',
+    'chmod a+x %(installdir)s/bin/make-squashfs',    
     # Install the runscripts
     'mkdir -p %(installdir)s/runscripts',
     f'cat >%(installdir)s/runscripts/init-conda-venv <<EOF {local_runscript_init_conda_venv}EOF',
@@ -217,7 +239,15 @@ postinstallcmds = [
     # can then be packaged.
     'mkdir -p %(installdir)s/user-software/venv',
     # For the next command, we don't need all the bind mounts yet, just the user-software one is enough.
-    f'singularity exec --bind %(installdir)s/user-software:/user-software %(installdir)s/{local_sif} bash -c \'$WITH_CONDA ; cd /user-software/venv ; python -m venv --system-site-packages venv-{local_conda_env}\'' 
+    f'singularity exec --bind %(installdir)s/user-software:/user-software %(installdir)s/{local_sif} bash -c \'$WITH_CONDA ; cd /user-software/venv ; python -m venv --system-site-packages venv-{local_conda_env}\'',
+    #
+    # Example of how to automate installation of Python packages that simply install with pip.
+    # EasyBuild may fail to produce a proper error though if the installation through the singularity
+    # command fails as it does not propagate error codes.
+    #
+    f'cat >%(installdir)s/user-software/venv/requirements.txt <<EOF {local_pip_requirements}EOF',
+    f'singularity exec --bind {local_singularity_bind} --bind %(installdir)s/user-software:/user-software %(installdir)s/{local_sif} bash -c \'source /runscripts/init-conda-venv ; cd /user-software/venv ; pip install -r requirements.txt\'',     
+    '%(installdir)s/bin/make-squashfs'
 ]
 
 sanity_check_paths = {
@@ -232,9 +262,10 @@ modextravars = {
     # SIF variables currently set by a function via modluafooter.
     #'SIF':                          '%(installdir)s/' + local_sif,
     #'SIFPYTORCH':                   '%(installdir)s/' + local_sif,
+    'CONTAINERROOT':                 '%(installdir)s',
     'RUNSCRIPTS':                    '%(installdir)s/runscripts',
     'RUNSCRIPTSPYTORCH':             '%(installdir)s/runscripts',
-    'SINGULARITY_BIND':              local_singularity_bind,
+    #'SINGULARITY_BIND':              local_singularity_bind,
     'SINGULARITYENV_WITH_VENV':      f'source /user-software/venv/venv-{local_conda_env}/bin/activate',
     'SINGULARITYENV_INIT_CONTAINER': 'source /runscripts/init-conda-venv',
     'SINGULARITYENV_PREPEND_PATH':   '/runscripts',
@@ -242,7 +273,8 @@ modextravars = {
 
 modluafooter = f"""
 -- Call a routine to set the various environment variables.
-create_container_vars( '{local_sif}', 'PyTorch', '%(installdir)s' )
+create_container_vars( '{local_sif}', 'PyTorch', '%(installdir)s', '{local_singularity_bind}' )
+-- setenv( 'SINGULARITY_BIND', '{local_singularity_bind},%(installdir)s/user-software.squashfs:/user-software:image-src=/' )
 """
 
 moduleclass = 'devel'
