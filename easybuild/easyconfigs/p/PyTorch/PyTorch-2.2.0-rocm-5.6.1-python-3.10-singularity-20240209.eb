@@ -1,4 +1,8 @@
 # Developed by Kurt Lust and Mihkel Tiks for LUMI
+#DOC Contains PyTorch 2.2.0 with torchaudio 2.2.0, torchdata 0.7.1+cpu, torchtext 0.17.0+cpu,
+#DOC torchvision 0.17.0 GPU version and, DeepSpeed 0.12.3, flash-attention 2.0.4 and
+#DOC xformers 0.0.25+8dd471d.d20240209, on Python 3.10 and ROCm 5.6.1.
+
 easyblock = 'MakeCp'
 
 name =          'PyTorch'
