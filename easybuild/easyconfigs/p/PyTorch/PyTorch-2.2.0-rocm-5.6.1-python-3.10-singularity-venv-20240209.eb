@@ -3,6 +3,9 @@
 #DOC torchvision 0.17.0 GPU version, DeepSpeed 0.12.3,  flash-attention 2.0.4 and
 #DOC xformers 0.0.25+8dd471d.d20240209, on Python 3.10 and ROCm 5.6.1.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
+#DOC
+#DOC This version works with $WITH_CONDA, $WITH_VENV and $WITH_CONDA_VENV for initialisation of the 
+#DOC conda / Python venv / or both environments respectively.
 
 easyblock = 'MakeCp'
 
@@ -36,7 +39,9 @@ This module provides a container with PyTorch %(version)s on Python {local_c_pyt
 It also contains DeepSpeed {local_c_DeepSpeed_version}, flash-attention {local_c_flashattention_version} and xformers
 {local_c_xformers_version}.
 
-The module defines a number of environment variables:
+The module defines a number of environment variables available outside the
+container:
+
 *   SIF and SIFPYTORCH: The full path and name of the Singularity SIF file 
     to use with singularity exec etc.
 *   SINGULAIRTY_BINDPATH: Mounts the necessary directories from the system,
@@ -44,10 +49,41 @@ The module defines a number of environment variables:
     able to use your regular directories in the container.
 *   RUNSCRIPTS and RUNSCRIPTSPYTORCH: The directory with some sample
     runscripts.
+*   CONTAINERROOT: Root directory of the container installation. Alternative
+    for EBROOTPYTHORCH.
     
-Note that this container uses a Conda environment internally. When in
-the container, the command to activate the container is contained in the
-environment variable WITH_CONDA.
+There are also a number of environment variables available inside the container:
+
+*   WITH_CONDA: Command to execute to activate the Conda environment used for 
+    the Python installation.
+*   WITH_VENV: Command to execute to activate the pre-created Python virtual
+    environment.
+*   INIT_CONDA_VENV: Command that can be used to initialise the Conda environment
+    and then on top of it the Python virtual environment.
+    
+Outside of the container, the following commands are available:
+
+*   start-shell: To start a bash shell in the container. Arguments can be used
+    to, e.g., tell it to start a command. Without arguments, the conda and Python 
+    virtual environments will be initialised, but this is not the case as soon as
+    arguments are used.
+*   make-squashfs: Make the user-software.squashfs file that would then be mounted
+    in the container after reloading the module. This will enhance performance if
+    the extra installation in user-software contains a lot of files.
+    
+Inside the container, the following scripts are available in /runscripts
+(and can be checked or edited outside the container in $CONTAINERROOT/runscripts):
+
+*   conda-python-simple: Start Python in the conda + Python venv environment.
+*   conda-python-distributed: Example script that can be used to start Python
+    in a distributed way compatible with the needs of PyTorch. You should pass
+    the Python commands to be executed with the options that the python executable
+    would take.
+*   get-master: A script used by conda-python-distributed.
+
+Note that any change that you make to files in $CONTAINERROOT will be fully erased
+whenever you reinstall the container with EasyBuild so backup all changes or 
+additions!
 """
 
 docurls = [
@@ -86,12 +122,12 @@ if [[ -f "/.singularity.d/Singularity" ]]
 then
     # In a singularity container, just in case a user would add this to the path.
     # There is no need here to distinguish between calling with and without arguments.
-    eval "\$INIT_CONTAINER" ; exec bash "\$@"
+    eval "\$WITH_CONDA_VENV" ; exec bash "\$@"
 else
     # Not yet in the container
     if [ "\$#" -eq 0 ]
     then
-        singularity exec \$SIFPYTORCH bash -c 'eval "\\$INIT_CONTAINER" ; exec bash'
+        singularity exec \$SIFPYTORCH bash -c 'eval "\\$WITH_CONDA_VENV" ; exec bash'
     else
         singularity exec \$SIFPYTORCH bash "\$@"
     fi
@@ -125,7 +161,7 @@ local_runscript_python_simple="""
 #!/bin/bash -e
 
 # Start conda environment inside the container
-eval "\$INIT_CONTAINER"
+eval "\$WITH_CONDA_VENV"
 
 # Run application
 python "\$@"
@@ -155,7 +191,7 @@ sleep 2
 echo "Rank \$SLURM_PROCID --> \$(taskset -p \$\$)"
 
 # Start conda environment and virtual environment inside the container
-eval "\$INIT_CONTAINER"
+eval "\$WITH_CONDA_VENV"
 
 # Set interfaces to be used by RCCL.
 export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
@@ -207,6 +243,9 @@ if __name__ == '__main__':
 # The empty line at the end is important because of the way we generate the file
 # for use in the container.
 #
+# You can outcomment this (or delete this) if you also delete the matching lines
+# in postinstallcmds.
+#
 local_pip_requirements = """
 lightning-utilities
 torchmetrics
@@ -220,8 +259,7 @@ pytorch-lightning
 
 local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' + \
                          '%(installdir)s/runscripts:/runscripts,' + \
-                         '/pfs,/scratch,/projappl,/project,/flash,/appl' # + \
-#                         ',%(installdir)s/user-software.squashfs:/user-software2:image-src=/'
+                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
 
 postinstallcmds = [
     # Install the scripts in the bin subdirectory
@@ -265,21 +303,20 @@ sanity_check_paths = {
 
 modextravars = {
     # SIF variables currently set by a function via modluafooter.
-    #'SIF':                          '%(installdir)s/' + local_sif,
-    #'SIFPYTORCH':                   '%(installdir)s/' + local_sif,
-    'CONTAINERROOT':                 '%(installdir)s',
-    'RUNSCRIPTS':                    '%(installdir)s/runscripts',
-    'RUNSCRIPTSPYTORCH':             '%(installdir)s/runscripts',
+    #'SIF':                           '%(installdir)s/' + local_sif,
+    #'SIFPYTORCH':                    '%(installdir)s/' + local_sif,
+    'CONTAINERROOT':                  '%(installdir)s',
+    'RUNSCRIPTS':                     '%(installdir)s/runscripts',
+    'RUNSCRIPTSPYTORCH':              '%(installdir)s/runscripts',
     #'SINGULARITY_BIND':              local_singularity_bind,
-    'SINGULARITYENV_WITH_VENV':      f'source /user-software/venv/venv-{local_conda_env}/bin/activate',
-    'SINGULARITYENV_INIT_CONTAINER': 'source /runscripts/init-conda-venv',
-    'SINGULARITYENV_PREPEND_PATH':   '/runscripts',
+    'SINGULARITYENV_WITH_VENV':       f'source /user-software/venv/venv-{local_conda_env}/bin/activate',
+    'SINGULARITYENV_WITH_CONDA_VENV': 'source /runscripts/init-conda-venv',
+    'SINGULARITYENV_PREPEND_PATH':    '/runscripts',
 }
 
 modluafooter = f"""
 -- Call a routine to set the various environment variables.
 create_container_vars( '{local_sif}', 'PyTorch', '%(installdir)s', '{local_singularity_bind}' )
--- setenv( 'SINGULARITY_BIND', '{local_singularity_bind},%(installdir)s/user-software.squashfs:/user-software:image-src=/' )
 """
 
 moduleclass = 'devel'
