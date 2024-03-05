@@ -96,6 +96,7 @@ echo "Rank \$SLURM_PROCID --> \$(taskset -p \$\$)"
 
 # Set interfaces to be used by RCCL.
 export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+export NCCL_NET_GDR_LEVEL=3
 
 # Set environment for the app
 export MASTER_ADDR=\$(/runscripts/get-master "\$SLURM_NODELIST")
@@ -159,13 +160,14 @@ sanity_check_paths = {
 
 modextravars = {
     # SIF variables currently set by a function via modluafooter.
-    #'SIF':              '%(installdir)s/' + local_sif,
-    #'SIFPYTORCH':       '%(installdir)s/' + local_sif,
-    'RUNSCRIPTS':        '%(installdir)s/runscripts',
-    'RUNSCRIPTSPYTORCH': '%(installdir)s/runscripts',
-    'SINGULARITY_BIND':  '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
-                         '%(installdir)s/runscripts:/runscripts,' + 
-                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
+    #'SIF':                        '%(installdir)s/' + local_sif,
+    #'SIFPYTORCH':                 '%(installdir)s/' + local_sif,
+    'RUNSCRIPTS':                  '%(installdir)s/runscripts',
+    'RUNSCRIPTSPYTORCH':           '%(installdir)s/runscripts',
+    'SINGULARITY_BIND':            '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
+                                   '%(installdir)s/runscripts:/runscripts,' + 
+                                   '/pfs,/scratch,/projappl,/project,/flash,/appl',
+    'SINGULARITYENV_PREPEND_PATH': '/runscripts',
 }
 
 modluafooter = f"""
