@@ -1,5 +1,5 @@
 #DOC Contains PyTorch 2.0.1 with torchaudio 2.0.2+31de77d, torchdata 0.6.1+e1feeb2, torchtext 0.15.2a0+4571036
-#DOC and torchvision 0.16.0+a90e584 GPU version, on Python 3.10 and ROCm 5.5.1.
+#DOC and torchvision 0.15.2a0+fa99a53 GPU version, on Python 3.10 and ROCm 5.5.1.
 
 easyblock = 'MakeCp'
 
@@ -91,6 +91,7 @@ echo "Rank \$SLURM_PROCID --> \$(taskset -p \$\$)"
 
 # Set interfaces to be used by RCCL.
 export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+export NCCL_NET_GDR_LEVEL=3
 
 # Set environment for the app
 export MASTER_ADDR=\$(/runscripts/get-master "\$SLURM_NODELIST")
@@ -153,13 +154,14 @@ sanity_check_paths = {
 
 modextravars = {
     # SIF variables currently set by a function via modluafooter.
-    #'SIF':              '%(installdir)s/' + local_sif,
-    #'SIFPYTORCH':       '%(installdir)s/' + local_sif,
-    'RUNSCRIPTS':        '%(installdir)s/runscripts',
-    'RUNSCRIPTSPYTORCH': '%(installdir)s/runscripts',
-    'SINGULARITY_BIND':  '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
-                         '%(installdir)s/runscripts:/runscripts,' + 
-                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
+    #'SIF':                        '%(installdir)s/' + local_sif,
+    #'SIFPYTORCH':                 '%(installdir)s/' + local_sif,
+    'RUNSCRIPTS':                  '%(installdir)s/runscripts',
+    'RUNSCRIPTSPYTORCH':           '%(installdir)s/runscripts',
+    'SINGULARITY_BIND':            '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
+                                   '%(installdir)s/runscripts:/runscripts,' + 
+                                   '/pfs,/scratch,/projappl,/project,/flash,/appl',
+    'SINGULARITYENV_PREPEND_PATH': '/runscripts',
 }
 
 modluafooter = f"""
