@@ -57,11 +57,35 @@ with the command that is available in the container as the environment variable
 `WITH_CONDA` (which for this container it is
 `source /opt/miniconda3/bin/activate pytorch`).
 
-Example of the use of `WITH_CONDA`: Check the Python packages in the container
-in an interactive session:
+The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
+several wrapper scripts to start Python from the
+conda environment in the container. Those scripts are also available outside the 
+container for inspection after loading the module in the 
+`$RUNSCRIPTS` subdirectory and you can use those scripts as a source
+of inspiration to develop a script that more directly executes your commands or
+does additional initialisations.
+
+
+## Examples
+
+Note: In the examples below you may need to replace the `standard-g` queue with a [different
+slurm partition allocatable per node]([Containers up to and including the 20240209 ones](https://docs.lumi-supercomputer.eu/runjobs/scheduled-jobs/partitions/#slurm-partitions-allocatable-by-node)) 
+if your user category has no access to `standard-g`. 
+
+
+### List the Python packages in the container
+
+#### Containers up to and including the 20240209 ones
+
+For the containers up to the 20240209 ones, this example also illustrated how the
+`WITH_CONDA` environment variable should be used.
+The example can be run in an interactive session and works even on the login nodes.
+
+In these containers, the Python packages
+can be listed using the following steps: First execute, e.g., 
 
 ```
-module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20231123
+module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240209
 singularity shell $SIF
 ```
 
@@ -73,36 +97,90 @@ $WITH_CONDA
 pip list
 ```
 
-The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
-several wrapper scripts to start Python from the
-conda environment in the container. Those scripts are also available outside the 
-container for inspection after loading the module in the 
-`$RUNSCRIPTS` subdirectory and you can use those scripts as a source
-of inspiration to develop a script that more directly executes your commands or
-does additional initialisations.
+The same can be done without opening an interactive session in the container with
 
-Example (in an interactive session):
+```
+module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240209
+singularity exec $SIF bash -c '$WITH_CONDA ; pip list'
+```
+
+Notice the use of single quotes as with double quotes `$WITH_CONDA` would be expanded
+by the shell before executing the singularity command, and at that time `WITH_CONDA` is
+not yet defined.
+
+
+#### Containers from 20240315 on
+
+For the containers from version 20240315 on, the `$WITH_CONDA` is no longer needed.
+In an interactive session, you still need to load the module and go into the container:
+
+```
+module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+singularity shell $SIF
+```
+
+but once in the container, at the `Singularity>` prompt, all that is needed is
+
+```
+pip list
+```
+
+Without an interactive session in the container, all that is now needed is
+
+```
+module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+singularity exec $SIF pip list
+```
+
+as the `pip` command is already in the search path.
+
+
+### Executing Python code in the container (single task)
+
+#### Containers up to and including the 20240209 ones
+
+The wrapper script `conda-python-single` which can be found in the `/runscripts` directory
+in the container, takes care of initialising the Conda environment and then passes its
+arguments to the `python` command. E.g., the example below will import the `torch`
+package in Python and then show the number of GPUs available to it:
 
 ```
 salloc -N1 -pstandard-g -t 30:00
 module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20231123
-srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/conda-python-simple \
+srun -N1 -n1 --gpus 8 singularity exec $SIF conda-python-simple \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
+exit
 ```
 
 This command will start Python and run PyTorch on a single CPU core with access to
 all 8 GPUs.
 
-After loading the module, the docker definition file used when building the container
-is available in the `$EBROOTPYTORCH/share/docker-defs` subdirectory (but not for all
-versions). As it requires some
-licensed components from LUMI and some other files that are not included, it currently
-cannot be used to reconstruct the container and extend its definition.
+??? Note "Container modules installed before March 9, 2024"
+    In these versions of the container module, `conda-python-simple` is not yet in
+    the search path for executables, and you need to modify the job script to use
+    `/runscripts/conda-python-simple` instead.
 
 
-## Example for distributed learning
+#### Containers from 20240315 on
 
-The communication between LUMI's GPUs during training with Pytorch is done via 
+As the Conda environment and Python virtual environment are properly initialised by the
+module, the `conda-python-simple` script is not even needed anymore (though still provided
+for compatibility with job scripts developed before those containers became available).
+
+The following commands now work just as well:
+
+```
+salloc -N1 -pstandard-g -t 30:00
+module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+srun -N1 -n1 --gpus 8 singularity exec $SIF python \
+    -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
+exit
+```
+
+
+### Distributed learning example
+
+The communication between LUMI's GPUs during training with PyTorch is done via 
 [RCCL](https://github.com/ROCmSoftwarePlatform/rccl), which is a library of  collective 
 communication routines for AMD GPUs. RCCL works out of the box on LUMI, however, 
 a special plugin is required so it can take advantage of the Slingshot 11 interconnect]. 
@@ -118,7 +196,6 @@ Together these scripts make job scripts a lot easier.
 
 An example job script using the [mnist example](https://github.com/Lumi-supercomputer/lumi-reframe-tests/tree/main/checks/containers/ML_containers/src/pytorch/mnist)
 (itself based on an example by Google) is:
-
 
 ``` bash
 #!/bin/bash -e
@@ -222,3 +299,9 @@ To use the container after installation, the `EasyBuild-user` module is not need
 is the `container` partition. The module will be available in all versions of the LUMI stack
 and in [the `CrayEnv` stack](https://docs.lumi-supercomputer.eu/runjobs/lumi_env/softwarestacks/#crayenv)
 (provided the environment variable `EBU_USER_PREFIX` points to the right location).
+
+After loading the module, the docker definition file used when building the container
+is available in the `$EBROOTPYTORCH/share/docker-defs` subdirectory (but not for all
+versions). As it requires some
+licensed components from LUMI and some other files that are not included, it currently
+cannot be used to reconstruct the container and extend its definition.
