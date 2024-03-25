@@ -23,7 +23,7 @@ local_conda_env = 'pytorch'
 
 name =          'PyTorch'
 version =       local_c_PyTorch_version
-versionsuffix = f'-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-singularity-20240315'
+versionsuffix = f'-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-singularity-exampleVenv-20240315'
 
 local_sif =    f'lumi-pytorch-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-pytorch-v{local_c_PyTorch_version}-dockerhash-{local_dockerhash}.sif'
 #local_docker = f'lumi-pytorch-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-pytorch-v2.2.0.docker'
@@ -310,6 +310,20 @@ if __name__ == '__main__':
 """
 
 #
+# An example of how some installations can be further automated.
+# The empty line at the end is important because of the way we generate the file
+# for use in the container.
+#
+# You can outcomment this (or delete this) if you also delete the matching lines
+# in postinstallcmds.
+#
+local_pip_requirements = """
+torchmetrics
+pytorch-lightning
+
+"""
+
+#
 # Now install does scripts and do further preparations of the container.
 #
 
@@ -341,6 +355,21 @@ postinstallcmds = [
     'mkdir -p %(installdir)s/user-software/venv',
     # For the next command, we don't need all the bind mounts yet, just the user-software one is enough.
     f'singularity exec --bind %(installdir)s/user-software:/user-software %(installdir)s/{local_sif} bash -c \'$WITH_CONDA ; cd /user-software/venv ; python -m venv --system-site-packages {local_conda_env}\'',
+    #
+    # Example of how to automate installation of Python packages that simply install with pip.
+    # EasyBuild may fail to produce a proper error though if the installation through the singularity
+    # command fails as it does not propagate error codes.
+    #
+    # We first create a requirements.txt file that we then use in the container to install the packages.
+    # The problem we are facing here is that the module is not yet available, so all bindings have to be
+    # cone by hand and the singularity command is a bit more comples. Finally we use the make-squashfs script
+    # to generate a SquashFS file from the software that we have just installed. Finally we remove the
+    # user-software subdirectory to instead use the SquashFS file in the container.
+    #
+    f'cat >%(installdir)s/user-software/venv/requirements.txt <<EOF {local_pip_requirements}EOF',
+    f'singularity exec --bind {local_singularity_bind} --bind %(installdir)s/user-software:/user-software %(installdir)s/{local_sif} bash -c \'source /runscripts/init-conda-venv ; cd /user-software/venv ; pip install -r requirements.txt\'',     
+    '%(installdir)s/bin/make-squashfs',
+    '/bin/rm -rf %(installdir)s/user-software',
 ]
 
 sanity_check_paths = {
