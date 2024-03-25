@@ -138,16 +138,70 @@ fi
 local_bin_make_squashfs = """
 #!/bin/bash -e
 
+if [[ -f "/.singularity.d/Singularity" ]] 
+then
+    # In a singularity container, just in case a user would add this to the path.
+    >&2 echo 'The make-squashfs command should not be run in the container.'
+    exit 1
+fi
+
 cd "%(installdir)s"
+
+if [[ ! -d "user-software" ]]
+then
+    >&2 echo -e 'The \$CONTAINERROOT/user-software subdirectory does not exist, so there is nothing to put into the SquashFS file.'
+    exit 2
+fi
+
+if [[ -f "user-software.squashfs" ]]
+then
+    >&2 echo -e '\$CONTAINERROOT/user-software.squashfs already exists. Please remove the file by' \
+                '\\nhand if you are sure you wish to proceed and re-run the make-squashfs command.'
+    exit 3
+fi
+
 mksquashfs user-software user-software.squashfs -processors 1 -no-progress |& grep -v Unrecognised
+
+echo -e '\\nCreated \$CONTAINERROOT/user-software.squashfs from \$CONTAINERROOT/user-software.' \
+        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted' \
+        '\\nfrom \$CONTAINERROOT/user-software.squashfs. Note that /user-software in the' \
+        '\\ncontainer will then be a read-only directory.' \
+        '\\nAfter reloading the module, you can also remove the \$CONTAINERROOT/user-software' \
+        '\\nsubdirectory if you so wish.\\n'
 
 """
 
 local_bin_unmake_squashfs = """
 #!/bin/bash -e
 
+if [[ -f "/.singularity.d/Singularity" ]] 
+then
+    # In a singularity container, just in case a user would add this to the path.
+    >&2 echo 'The unmake-squashfs command should not be run in the container.'
+    exit 1
+fi
+
 cd "%(installdir)s"
+
+if [[ ! -f "user-software.squashfs" ]]
+then
+    >&2 echo -e '\$CONTAINERROOT/user-software.squashfs does not exist so cannot uncompress it.'
+    exit 2
+fi
+
+if [[ -d "user-software" ]]
+then
+    >&2 echo -e 'The \$CONTAINERROOT/user-software subdirectory already exists. Please remove this directory by hand' \
+                '(rm -r \$CONTAINERROOT/user-software) if you are sure you wish to proceed and re-run the unmake-squashfs command."
+    exit 3
+fi
+
 unsquashfs -d ./user-software user-software.squashfs
+
+echo -e '\\nCreated \$CONTAINERROOT/user-software subdirectory from \$CONTAINERROOT/user-software.squasfs.' \
+        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted from the' \
+        '\\n\$CONTAINERROOT/user-software directory and can now write to /user-software in the container.' \
+        '\\nYou can thenb also remove the \$CONTAINERROOT/user-software.squashfs file if you so wish.\\n'
 
 """
 
@@ -188,6 +242,8 @@ if [ \$SLURM_LOCALID -eq 0 ] ; then
 fi
 sleep 2
 
+# MIOPEN needs some initialisation for the cache as the default location
+# does not work on LUMI as Lustre does not provide the necessary features.
 export MIOPEN_USER_DB_PATH="/tmp/\$(whoami)-miopen-cache-\$SLURM_NODEID"
 export MIOPEN_CUSTOM_CACHE_DIR=\$MIOPEN_USER_DB_PATH
 
@@ -198,22 +254,25 @@ if [ \$SLURM_LOCALID -eq 0 ] ; then
 fi
 sleep 2
 
-# Report affinity
-echo "Rank \$SLURM_PROCID --> \$(taskset -p \$\$)"
-
-# Start conda environment and virtual environment inside the container
-# eval "\$WITH_CONDA_VENV"
-
 # Set interfaces to be used by RCCL.
+# This is needed as otherwise RCCL tries to use a network interface it has
+# noa ccess to on LUMI.
 export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
 export NCCL_NET_GDR_LEVEL=3
 
-# Set environment for the app
+# Set ROCR_VISIBLE_DEVICES so that each task uses the proper GPU
+export ROCR_VISIBLE_DEVICES=\$SLURM_LOCALID
+
+# Report affinity to check 
+echo "Rank \$SLURM_PROCID --> \$(taskset -p \$\$); GPU \$ROCR_VISIBLE_DEVICES"
+
+# The usual PyTorch initialisations (also needed on NVIDIA)
+# Note that since we fix the port ID it is not possible to run, e.g., two
+# instances via this script using half a node each.
 export MASTER_ADDR=\$(/runscripts/get-master "\$SLURM_NODELIST")
 export MASTER_PORT=29500
 export WORLD_SIZE=\$SLURM_NPROCS
 export RANK=\$SLURM_PROCID
-export ROCR_VISIBLE_DEVICES=\$SLURM_LOCALID
 
 # Run application
 python "\$@"
@@ -310,8 +369,8 @@ postinstallcmds = [
     #
     f'cat >%(installdir)s/user-software/venv/requirements.txt <<EOF {local_pip_requirements}EOF',
     f'singularity exec --bind {local_singularity_bind} --bind %(installdir)s/user-software:/user-software %(installdir)s/{local_sif} bash -c \'source /runscripts/init-conda-venv ; cd /user-software/venv ; pip install -r requirements.txt\'',     
-    '%(installdir)s/bin/make-squashfs',
-    '/bin/rm -rf %(installdir)s/user-software',
+    #'%(installdir)s/bin/make-squashfs',
+    #'/bin/rm -rf %(installdir)s/user-software',
 ]
 
 sanity_check_paths = {
