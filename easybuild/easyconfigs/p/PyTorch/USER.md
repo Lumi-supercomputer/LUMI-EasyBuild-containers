@@ -117,7 +117,7 @@ a SquashFS file from it for better file system performance). You can also use th
 ## Examples with the wrapper scripts
 
 Note: In the examples below you may need to replace the `standard-g` queue with a [different
-slurm partition allocatable per node]([Containers up to and including the 20240209 ones](https://docs.lumi-supercomputer.eu/runjobs/scheduled-jobs/partitions/#slurm-partitions-allocatable-by-node)) 
+slurm partition allocatable per node](https://docs.lumi-supercomputer.eu/runjobs/scheduled-jobs/partitions/#slurm-partitions-allocatable-by-node)
 if your user category has no access to `standard-g`. 
 
 
@@ -154,7 +154,8 @@ singularity exec $SIF bash -c '$WITH_CONDA ; pip list'
 
 Notice the use of single quotes as with double quotes `$WITH_CONDA` would be expanded
 by the shell before executing the singularity command, and at that time `WITH_CONDA` is
-not yet defined.
+not yet defined. To use the container it also doesn't matter which version of the 
+LUMI module is loaded, and in fact, loading CrayEnv would work as well.
 
 
 #### Containers from 20240315 on
@@ -194,7 +195,7 @@ package in Python and then show the number of GPUs available to it:
 
 ```
 salloc -N1 -pstandard-g -t 30:00
-module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20231123
+module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20240209
 srun -N1 -n1 --gpus 8 singularity exec $SIF conda-python-simple \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 exit
@@ -231,7 +232,7 @@ exit
 The communication between LUMI's GPUs during training with PyTorch is done via 
 [RCCL](https://github.com/ROCmSoftwarePlatform/rccl), which is a library of  collective 
 communication routines for AMD GPUs. RCCL works out of the box on LUMI, however, 
-a special plugin is required so it can take advantage of the Slingshot 11 interconnect]. 
+a special plugin is required so it can take advantage of the Slingshot 11 interconnect. 
 That's the [`aws-ofi-rccl`](https://github.com/ROCmSoftwarePlatform/aws-ofi-rccl) plugin, 
 which is a library that can be used as a back-end for RCCL to interact with the interconnect 
 via libfabric. The plugin is already built in the containers that we provide here.
@@ -588,7 +589,7 @@ rm -rf $CONTAINERROOT/user-software
 ```
 
 as it can be reconstructed (except for the file dates) from the SquashFS file using the script
-`uname-squashfs` which is also provided by the module.
+`unmake-squashfs` which is also provided by the module.
 
 Reload the module to let the changes take effect and go again in the container:
 
