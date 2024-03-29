@@ -3,11 +3,13 @@
 **BETA VERSION, problems are possible and they may not be solved quickly.**
 
 The rocm container is developed by AMD specifically for LUMI and contains the
-necessary parts explore ROCm. The use is rather limited at the moment as there
-is no easy way to build upon an existing container on LUMI. However, from
-a shell in the container you can access both the newer ROCm version in the container
-and Cray PE which is hosted outside of the container, and read and write from all
-your regular directories.
+necessary parts explore ROCm. The use is rather limited because at the moment
+the methods that can be used to build upon an existing container are rather
+limited on LUMI due to security concerns with certain functionality needed for 
+that. The can however
+[be used as a base image for cotainr](index.md#using-the-images-as-base-image-for-cotainr)
+and it is also possible in some cases to extend them using the so-called
+[SingularityCE "unprivileged proot build" process](https://docs.sylabs.io/guides/3.11/user-guide/build_a_container.html#unprivilged-proot-builds).
 
 **It is entirely normal that some features in some of the containers will not work.
 Each ROCm driver supports only particular versions of packages. E.g., the ROCm 
@@ -17,11 +19,13 @@ support can do about it. Only one driver version can be active on the system,
 and installing a newer version depends on other software on the system also and
 is not as trivial as it would be on a PC.**
 
-The EasyBuild installation with the EasyConfigs mentioned below will do two things:
+## Use via EasyBuild-generated modules
+
+The EasyBuild installation with the EasyConfigs mentioned below will do three things:
 
 1.  It will copy the container to your own file space. We realise containers can be
     big, but it ensures that you have complete control over when a container is
-    removed again.
+    removed.
     
     We will remove a container from the system when it is not sufficiently functional
     anymore, but the container may still work for you.
@@ -63,8 +67,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do two thin
     rebuild the container module for some reason.**
 
 
-
-## Installation
+### Installation via EasyBuild
 
 To install the container with EasyBuild, follow the instructions in the
 [EasyBuild section of the LUMI documentation, section "Software"](https://docs.lumi-supercomputer.eu/software/installing/easybuild/),
@@ -79,3 +82,97 @@ To use the container after installation, the `EasyBuild-user` module is not need
 is the `container` partition. The module will be available in all versions of the LUMI stack
 and in [the `CrayEnv` stack](https://docs.lumi-supercomputer.eu/runjobs/lumi_env/softwarestacks/#crayenv)
 (provided the environment variable `EBU_USER_PREFIX` points to the right location).
+
+## Direct access
+
+The ROCm containers are available in the following subdirectories of `/appl/local/containers`:
+
+-   `/appl/local/containers/sif-images`: Symbolic link to the latest version of the container
+    for each ROCm version provided. Those links can change without notice!
+
+-   `/appl/local/containers/tested-containers`: Tested containers provides as a Singulartiy `.sif` file
+    and a docker-generated tarball. Containers in this directory are removed quickly when a new version
+    becomes available.
+
+-   `/appl/local/containers/easybuild-sif-images`: Singularity `.sif` images used with the EasyConfigs
+    that we provide. They tend to be available for a longer time than in the other two subdirectories.
+
+If you depend on a particular version of a container, we recommend that you copy the container to
+your own file space (e.g., in `/project`) as there is no guarantee the specific version will remain
+available centrally on the system for as long as you want.
+
+When using the containers without the modules, you will have to take care of the bindings as some
+system files are needed for, e.g., RCCL. The recommended mininmal bindings are:
+
+```
+-B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4
+```
+
+and the bindings you need to acces the files you want to use from `/scratch`, `/flash` and/or `/project`.
+
+Note that the list recommended bindings may change after a system update.
+
+## Using the images as base image for cotainr
+
+We recommend using these images as the base image for cotainr if you want to 
+[build a container with cotainr](https://lumi-supercomputer-docs-preview.rahtiapp.fi/origin/pytorch/software/containers/singularity/#building-containers-using-the-cotainr-tool) 
+that needs ROCm. You can use the `--base-image=<my base image>` flag of the `cotainr` command
+to indicate the base image that should be used.
+
+If you do so, please make sure that the GPU software you install from conda-forge or via `pip` 
+with cotainr is compatible with the version of ROCm in the container that you use as the base
+image.
+
+??? Example "PyTorch with cotainr (click to expand)"
+    To start, create a Yaml file to tell cotainr which software should be installed.
+    As an example, consider the file below which we name `py311_rocm542_pytorch.yml`  
+
+    ```yaml
+    name: py311_rocm542_pytorch
+    channels:
+    - conda-forge
+    dependencies:
+    - certifi=2023.07.22
+    - charset-normalizer=3.2.0
+    - filelock=3.12.4
+    - idna=3.4
+    - jinja2=3.1.2
+    - lit=16.0.6
+    - markupsafe=2.1.3
+    - mpmath=1.3.0
+    - networkx=3.1
+    - numpy=1.25.2
+    - pillow=10.0.0
+    - pip=23.2.1
+    - python=3.11.5
+    - requests=2.31.0
+    - sympy=1.12
+    - typing-extensions=4.7.1
+    - urllib3=2.0.4
+    - pip:
+        - --extra-index-url https://download.pytorch.org/whl/rocm5.4.2/
+        - pytorch-triton-rocm==2.0.2
+        - torch==2.0.1+rocm5.4.2
+        - torchaudio==2.0.2+rocm5.4.2
+        - torchvision==0.15.2+rocm5.4.2
+    ```
+
+    Now we are ready to generate a new Singularity `.sif` file with this defintion:
+
+    ```bash
+    module load LUMI
+    module load cotainr
+    cotainr build my-new-image.sif --base-image=/appl/local/containers/sif-images/lumi-rocm-rocm-5.4.6.sif --conda-env=py311_rocm542_pytorch.yml
+    ```
+
+    We don't have a container that matches the ROCm 5.4.2 version of ROCm for which the Python packages above
+    are generated (they are only available for a small selection of ROCm version) but the 5.4.6 container
+    should be close enough to work without problems.
+
+    You're now ready to use the new image with the direct access method. As in this example we installed
+    PyTorch, the information on the [PyTorch page](../../p/PyTorch/) page in this guide is also very
+    relevant. And if you understand very well what you're doing, you may even adapt one of the EasyBuild
+    recipes for the PyTorch containers to use your new image and install the wrapper scripts etc. that 
+    those modules provide (pointing EasyBuild to your image with the `--sourcepath` flag of the `eb` 
+    command).
+
