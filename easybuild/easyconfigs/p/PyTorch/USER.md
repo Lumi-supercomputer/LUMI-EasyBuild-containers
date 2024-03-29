@@ -245,59 +245,67 @@ Together these scripts make job scripts a lot easier.
 An example job script using the [mnist example](https://github.com/Lumi-supercomputer/lumi-reframe-tests/tree/main/checks/containers/ML_containers/src/pytorch/mnist)
 (itself based on an example by Google) is:
 
-``` bash
-#!/bin/bash -e
-#SBATCH --nodes=4
-#SBATCH --gpus-per-node=8
-#SBATCH --tasks-per-node=8
-#SBATCH --cpus-per-task=7
-#SBATCH --output="output_%x_%j.txt"
-#SBATCH --partition=standard-g
-#SBATCH --mem=480G
-#SBATCH --time=00:10:00
-#SBATCH --account=project_<your_project_id>
+1.  The mnist example needs some data files. We can get them in the job script (as we did before)
+    but also simply install them now, avoiding repeated downloads when using the script multiple times
+    (in the example with wrappers it was in the job script to have a one file example).
+    First create a directory for your work on this example and go into that directory.
+    In that directory we'll create a subdirectory `mnist` with some files. The first run of 
+    the jobscript will download even more files.
+    Assuming you are working on the login nodes where the `wget` program is already available,
 
-module load LUMI  # Which version doesn't matter, it is only to get the container and wget.
-module load wget  # Compute nodes don't have wget preinstalled. Version and toolchain don't matter in this example.
-module load PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+    ``` bash
+    mkdir mnist ; pushd mnist
+    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/main/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    mkdir -p model ; cd model
+    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/main/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    popd
+    ```
 
-# Get the files from the LUMI ReFrame repository
-# It is not recommended to do this in a jobscript but it works to ensure that
-# you get the correct files for the example. And even worse, the example itself
-# downloads a lot more data.
-wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/main/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
-mkdir -p model ; cd model
-wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/main/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
-cd ..
+    will fetch the two files we need to start.
 
-# Optional: Inject the environment variables for NCCL debugging into the container.   
-# This will produce a lot of debug output!     
-export SINGULARITYENV_NCCL_DEBUG=INFO
-export SINGULARITYENV_NCCL_DEBUG_SUBSYS=INIT,COLL
+2.  We can now create the jobscript `mnist.slurm`:
 
-c=fe
-MYMASKS="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
+    ``` bash
+    #!/bin/bash -e
+    #SBATCH --nodes=4
+    #SBATCH --gpus-per-node=8
+    #SBATCH --tasks-per-node=8
+    #SBATCH --cpus-per-task=7
+    #SBATCH --output="output_%x_%j.txt"
+    #SBATCH --partition=standard-g
+    #SBATCH --mem=480G
+    #SBATCH --time=00:10:00
+    #SBATCH --account=project_<your_project_id>
 
-srun --cpu-bind=mask_cpu:$MYMASKS \
-  singularity exec $SIFPYTORCH \
-    conda-python-distributed -u mnist_DDP.py --gpu --modelpath model
-```
+    module load LUMI  # Which version doesn't matter, it is only to get the container.
+    module load PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
 
-??? Note "Container modules installed before March 9, 2024"
-    In these versions of the container module, `conda-python-distributed` is not yet in
-    the search path for executables, and you need to modify the job script to use
-    `/runscripts/conda-python-distributed` instead.
+    # Optional: Inject the environment variables for NCCL debugging into the container.   
+    # This will produce a lot of debug output!     
+    export SINGULARITYENV_NCCL_DEBUG=INFO
+    export SINGULARITYENV_NCCL_DEBUG_SUBSYS=INIT,COLL
 
-In the above example we do download all files, which of course is in general not a good idea, in particular
-if those files are only read anyway. However, the example itself further downloads data it needs.
+    c=fe
+    MYMASKS="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
 
-We use a CPU mask to ensure a proper mapping of CPU chiplets onto GPU chiplets. The GPUs are used in
-the regular ordering, so we reorder the CPU cores for each task so that the first task on a node
-gets the cores most closely to GPU 0, etc. 
+    cd mnist
+    srun --cpu-bind=mask_cpu:$MYMASKS \
+      singularity exec $SIFPYTORCH \
+        conda-python-distributed -u mnist_DDP.py --gpu --modelpath model
+    ```
 
-The jobscript also shows how environment variables to enable debugging of the RCCL communication can be
-set outside the container. Basically, if the name of an environment variable is prepended with `SINGULARITYENV_`,
-it will be injected in the container by the `singularity` command. 
+    ??? Note "Container modules installed before March 9, 2024"
+        In these versions of the container module, `conda-python-distributed` is not yet in
+        the search path for executables, and you need to modify the job script to use
+        `/runscripts/conda-python-distributed` instead.
+
+    We use a CPU mask to ensure a proper mapping of CPU chiplets onto GPU chiplets. The GPUs are used in
+    the regular ordering, so we reorder the CPU cores for each task so that the first task on a node
+    gets the cores most closely to GPU 0, etc. 
+
+    The jobscript also shows how environment variables to enable debugging of the RCCL communication can be
+    set outside the container. Basically, if the name of an environment variable is prepended with `SINGULARITYENV_`,
+    it will be injected in the container by the `singularity` command. 
 
 ??? Note "Inside the `conda-python-distributed` script (if you need to modify things)"
 
@@ -762,119 +770,54 @@ For easy comparison, we use the same
 already used in the ["Distributed learning example" with the wrapper scripts](index.md#distributed-learning-example).
 The text is written in such a way though that it can be read without first reading that section.
 
-First one needs to create the script `get-master.py` that will be used to determine the
-master node for communication:
 
-``` python
-import argparse
-def get_parser():
-    parser = argparse.ArgumentParser(description="Extract master node name from Slurm node list",
-            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("nodelist", help="Slurm nodelist")
-    return parser
+1.  First one needs to create the script `get-master.py` that will be used to determine the
+    master node for communication:
+
+    ``` python
+    import argparse
+    def get_parser():
+        parser = argparse.ArgumentParser(description="Extract master node name from Slurm node list",
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument("nodelist", help="Slurm nodelist")
+        return parser
 
 
-if __name__ == '__main__':
-    parser = get_parser()
-    args = parser.parse_args()
+    if __name__ == '__main__':
+        parser = get_parser()
+        args = parser.parse_args()
 
-    first_nodelist = args.nodelist.split(',')[0]
+        first_nodelist = args.nodelist.split(',')[0]
 
-    if '[' in first_nodelist:
-        a = first_nodelist.split('[')
-        first_node = a[0] + a[1].split('-')[0]
+        if '[' in first_nodelist:
+            a = first_nodelist.split('[')
+            first_node = a[0] + a[1].split('-')[0]
 
-    else:
-        first_node = first_nodelist
+        else:
+            first_node = first_nodelist
 
-    print(first_node)
-```
-
-Next we need another script that will run in the container to set up a number of
-environment variables that are needed to run PyTorch successfully on LUMI and at
-the end, call Python to run our example. Let's store the following script as
-`run-pytorch.py`.
-
-``` python
-#!/bin/bash -e
-
-# Make sure GPUs are up
-if [ $SLURM_LOCALID -eq 0 ] ; then
-    rocm-smi
-fi
-sleep 2
-
-# !Remove this if using an image extended with cotainr or a container from elsewhere.!
-# Start conda environment inside the container
-$WITH_CONDA
-
-# MIOPEN needs some initialisation for the cache as the default location
-# does not work on LUMI as Lustre does not provide the necessary features.
-export MIOPEN_USER_DB_PATH="/tmp/$(whoami)-miopen-cache-$SLURM_NODEID"
-export MIOPEN_CUSTOM_CACHE_DIR=$MIOPEN_USER_DB_PATH
-
-if [ $SLURM_LOCALID -eq 0 ] ; then
-    rm -rf $MIOPEN_USER_DB_PATH
-    mkdir -p $MIOPEN_USER_DB_PATH
-fi
-sleep 2
-
-# Optional! Set NCCL debug output to check correct use of aws-ofi-rccl (these are very verbose)
-export NCCL_DEBUG=INFO
-export NCCL_DEBUG_SUBSYS=INIT,COLL
-
-# Set interfaces to be used by RCCL.
-# This is needed as otherwise RCCL tries to use a network interface it has
-# no access to on LUMI.
-export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
-export NCCL_NET_GDR_LEVEL=3
-
-# Set ROCR_VISIBLE_DEVICES so that each task uses the proper GPU
-export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
-
-# Report affinity to check
-echo "Rank $SLURM_PROCID --> $(taskset -p $$); GPU $ROCR_VISIBLE_DEVICES"
-
-# The usual PyTorch initialisations (also needed on NVIDIA)
-# Note that since we fix the port ID it is not possible to run, e.g., two
-# instances via this script using half a node each.
-export MASTER_ADDR=$(python get-master.py "$SLURM_NODELIST")
-export MASTER_PORT=29500
-export WORLD_SIZE=$SLURM_NPROCS
-export RANK=$SLURM_PROCID
-export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
-
-# Run app
-cd mnist
-python -u mnist_DDP.py --gpu --modelpath model
-```
-
-??? Note "What's going on in this script? (click to expand)"
-    The script sets a number of environment variables. Some are fairly standard when using PyTorch
-    on an HPC cluster while others are specific for the LUMI interconnect and architecture or the 
-    AMD ROCm environment.
-
-    At the start we just print some information about the GPU. We do this only ones on each node
-    on the process which is why we test on `$SLURM_LOCALID`, which is a numbering starting from 0
-    on each node of the job:
+        print(first_node)
+    ```
+2.  Next we need another script that will run in the container to set up a number of
+    environment variables that are needed to run PyTorch successfully on LUMI and at
+    the end, call Python to run our example. Let's store the following script as
+    `run-pytorch.sh`.
 
     ``` bash
+    #!/bin/bash -e
+
+    # Make sure GPUs are up
     if [ $SLURM_LOCALID -eq 0 ] ; then
         rocm-smi
     fi
     sleep 2
-    ```
 
-    The container uses a Conda environment internally. So to make the right version of Python
-    and its packages availabe, we need to activate the environment. The precise command to
-    activate the environment is stored in `$WITH_CONDA` and we can just call it by specifying
-    the variable as a bash command.
+    # !Remove this if using an image extended with cotainr or a container from elsewhere.!
+    # Start conda environment inside the container
+    $WITH_CONDA
 
-    The `MIOPEN_` environment variables are needed to make 
-    [MIOpen](https://rocm.docs.amd.com/projects/MIOpen/en/latest/) create its caches on `/tmp`
-    as doing this on Lustre fails because of file locking issues:
-
-    ``` bash
+    # MIOPEN needs some initialisation for the cache as the default location
+    # does not work on LUMI as Lustre does not provide the necessary features.
     export MIOPEN_USER_DB_PATH="/tmp/$(whoami)-miopen-cache-$SLURM_NODEID"
     export MIOPEN_CUSTOM_CACHE_DIR=$MIOPEN_USER_DB_PATH
 
@@ -882,84 +825,154 @@ python -u mnist_DDP.py --gpu --modelpath model
         rm -rf $MIOPEN_USER_DB_PATH
         mkdir -p $MIOPEN_USER_DB_PATH
     fi
-    ```
+    sleep 2
 
-    It is also essential to tell RCCL, the communication library, which network adapters to use. 
-    These environment variables start with `NCCL_` because ROCm tries to keep things as similar as
-    possible to NCCL in the NVIDIA ecosystem:
+    # Optional! Set NCCL debug output to check correct use of aws-ofi-rccl (these are very verbose)
+    export NCCL_DEBUG=INFO
+    export NCCL_DEBUG_SUBSYS=INIT,COLL
 
-    ```
+    # Set interfaces to be used by RCCL.
+    # This is needed as otherwise RCCL tries to use a network interface it has
+    # no access to on LUMI.
     export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
     export NCCL_NET_GDR_LEVEL=3
-    ```
 
-    Without this RCCL may try to use a network adapter meant for system management rather than
-    inter-node communications!
+    # Set ROCR_VISIBLE_DEVICES so that each task uses the proper GPU
+    export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
 
-    We also set `ROCR_VISIBLE_DEVICES` to ensure that each task uses the proper GPU.
-    This is again based on the local task ID of each Slurm task.
+    # Report affinity to check
+    echo "Rank $SLURM_PROCID --> $(taskset -p $$); GPU $ROCR_VISIBLE_DEVICES"
 
-    Furthermore some environment variables are needed by PyTorch itself that are also needed on
-    NVIDIA systems.
-
-    PyTorch needs to find the master for communication which is done through the
-    `get-master.py` script that we created before:
-
-    ``` bash
+    # The usual PyTorch initialisations (also needed on NVIDIA)
+    # Note that since we fix the port ID it is not possible to run, e.g., two
+    # instances via this script using half a node each.
     export MASTER_ADDR=$(python get-master.py "$SLURM_NODELIST")
     export MASTER_PORT=29500
+    export WORLD_SIZE=$SLURM_NPROCS
+    export RANK=$SLURM_PROCID
+    export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
+
+    # Run app
+    cd /workdir/mnist
+    python -u mnist_DDP.py --gpu --modelpath model
     ```
 
-    **As we fix the port number here, the `conda-python-distributed` script that we provide, 
-    has to run on exclusive nodes.
-    Running, e.g., 2 4-GPU jobs on the same node with this command will not work as there will be
-    a conflict for the TCP port for communication on the master as `MASTER_PORT` is hard-coded in 
-    this version of the script.**
+    ??? Note "What's going on in this script? (click to expand)"
+        The script sets a number of environment variables. Some are fairly standard when using PyTorch
+        on an HPC cluster while others are specific for the LUMI interconnect and architecture or the 
+        AMD ROCm environment.
 
+        At the start we just print some information about the GPU. We do this only ones on each node
+        on the process which is why we test on `$SLURM_LOCALID`, which is a numbering starting from 0
+        on each node of the job:
 
-The mnist example also needs some data files. We can get them in the job script (as we did before)
-but also simply install them now, avoiding repeated downloads when using the script multiple times
-(in the example with wrappers it was in the job script to have a one file example).
-Assuming you do this on the login nodes where the `wget` program is already available,
+        ``` bash
+        if [ $SLURM_LOCALID -eq 0 ] ; then
+            rocm-smi
+        fi
+        sleep 2
+        ```
 
-``` bash
-mkdir mnist ; pushd mnist
-wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/main/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
-mkdir -p model ; cd model
-wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/main/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
-popd
-```
+        The container uses a Conda environment internally. So to make the right version of Python
+        and its packages availabe, we need to activate the environment. The precise command to
+        activate the environment is stored in `$WITH_CONDA` and we can just call it by specifying
+        the variable as a bash command.
 
-And finaly we can create our jobscript, e.g. `mnist.slurm`, which we will launch from the directory
-that also contains the `mnist` subdirectory and `get-master.py` and `run-pythorch.sh` scripts and the
-container image.
+        The `MIOPEN_` environment variables are needed to make 
+        [MIOpen](https://rocm.docs.amd.com/projects/MIOpen/en/latest/) create its caches on `/tmp`
+        as doing this on Lustre fails because of file locking issues:
 
-```bash
-#!/bin/bash -e
-#SBATCH --nodes=4
-#SBATCH --gpus-per-node=8
-#SBATCH --tasks-per-node=8
-#SBATCH --cpus-per-task=7
-#SBATCH --output="output_%x_%j.txt"
-#SBATCH --partition=standard-g
-#SBATCH --mem=480G
-#SBATCH --time=00:10:00
-#SBATCH --account=project_<your_project_id>
+        ``` bash
+        export MIOPEN_USER_DB_PATH="/tmp/$(whoami)-miopen-cache-$SLURM_NODEID"
+        export MIOPEN_CUSTOM_CACHE_DIR=$MIOPEN_USER_DB_PATH
 
-CONTAINER=your-container-image.sif
+        if [ $SLURM_LOCALID -eq 0 ] ; then
+            rm -rf $MIOPEN_USER_DB_PATH
+            mkdir -p $MIOPEN_USER_DB_PATH
+        fi
+        ```
 
-c=fe
-MYMASKS="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
+        It is also essential to tell RCCL, the communication library, which network adapters to use. 
+        These environment variables start with `NCCL_` because ROCm tries to keep things as similar as
+        possible to NCCL in the NVIDIA ecosystem:
 
-srun --cpu-bind=mask_cpu:$MYMASKS \
-  singularity exec \
-    -B /var/spool/slurmd \
-    -B /opt/cray \
-    -B /usr/lib64/libcxi.so.1 \
-    -B /usr/lib64/libjansson.so.4 \
-    -B $PWD:/workdir \
-    $CONTAINER /workdir/run-pytorch.sh
-```
+        ```
+        export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+        export NCCL_NET_GDR_LEVEL=3
+        ```
+
+        Without this RCCL may try to use a network adapter meant for system management rather than
+        inter-node communications!
+
+        We also set `ROCR_VISIBLE_DEVICES` to ensure that each task uses the proper GPU.
+        This is again based on the local task ID of each Slurm task.
+
+        Furthermore some environment variables are needed by PyTorch itself that are also needed on
+        NVIDIA systems.
+
+        PyTorch needs to find the master for communication which is done through the
+        `get-master.py` script that we created before:
+
+        ``` bash
+        export MASTER_ADDR=$(python get-master.py "$SLURM_NODELIST")
+        export MASTER_PORT=29500
+        ```
+
+        **As we fix the port number here, the `conda-python-distributed` script that we provide, 
+        has to run on exclusive nodes.
+        Running, e.g., 2 4-GPU jobs on the same node with this command will not work as there will be
+        a conflict for the TCP port for communication on the master as `MASTER_PORT` is hard-coded in 
+        this version of the script.**
+
+    Make sure the `run-pytorch.sh` script is executable:
+
+    ``` bash
+    chmod ug+x run-pytorch.sh
+    ```
+
+3.  The mnist example also needs some data files. We can get them in the job script (as we did before)
+    but also simply install them now, avoiding repeated downloads when using the script multiple times
+    (in the example with wrappers it was in the job script to have a one file example).
+    Assuming you do this on the login nodes where the `wget` program is already available,
+
+    ``` bash
+    mkdir mnist ; pushd mnist
+    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/main/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    mkdir -p model ; cd model
+    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/main/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    popd
+    ```
+
+4.  Finaly we can create our jobscript, e.g. `mnist.slurm`, which we will launch from the directory
+    that also contains the `mnist` subdirectory and `get-master.py` and `run-pythorch.sh` scripts and the
+    container image.
+
+    ```bash
+    #!/bin/bash -e
+    #SBATCH --nodes=4
+    #SBATCH --gpus-per-node=8
+    #SBATCH --tasks-per-node=8
+    #SBATCH --cpus-per-task=7
+    #SBATCH --output="output_%x_%j.txt"
+    #SBATCH --partition=standard-g
+    #SBATCH --mem=480G
+    #SBATCH --time=00:10:00
+    #SBATCH --account=project_<your_project_id>
+
+    CONTAINER=your-container-image.sif
+
+    c=fe
+    MYMASKS="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
+
+    srun --cpu-bind=mask_cpu:$MYMASKS \
+    singularity exec \
+        -B /var/spool/slurmd \
+        -B /opt/cray \
+        -B /usr/lib64/libcxi.so.1 \
+        -B /usr/lib64/libjansson.so.4 \
+        -B $PWD:/workdir \
+        $CONTAINER /workdir/run-pytorch.sh
+    ```
 
 
 ## Known restrictions and problems
