@@ -2,6 +2,22 @@
 
 **BETA VERSION, problems may occur and may not be solved quickly.**
 
+The containers that are provided by the LUMI User Support Team can be used in
+two possible ways:
+
+-   [Through modules and wrapper scripts generated via EasyBuild](index.md#module-and-wrapper-scripts)
+
+-   [Directly, with you taking care of all bindings and all necessary environment
+    variables.](index.md#alternative-direct-access)
+
+    These instructions will likely also work for the 
+    [containers built on top of the ROCm containers with cotainr](../../r/rocm/index.md#using-the-images-as-base-image-for-cotainr).
+
+Containers with PyTorch provided in local software stacks (e.g., the CSC software stack)
+may be build differently with different wrapper scripts so instructions on this page
+may not apply to those.
+
+
 ## Module and wrapper scripts
 
 The PyTorch container is developed by AMD specifically for LUMI and contains the
@@ -11,9 +27,9 @@ The apex, torchvision, torchdata, torchtext and torchaudio packages are also inc
 
 The EasyBuild installation with the EasyConfigs mentioned below will do three or four things:
 
-1.  It will copy the container to your own file space. We realise containers can be
-    big, but it ensures that you have complete control over when a container is
-    removed again.
+1.  It will copy the container to your own EasyBuild software installation space. 
+    We realise containers can be big, but it ensures that you have complete control 
+    over when a container is removed.
     
     We will remove a container from the system when it is not sufficiently functional
     anymore, but the container may still work for you. E.g., after an upgrade of the 
@@ -75,7 +91,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
     -   `start-shell`: To start a bash shell in the container. Arguments can be used
         to, e.g., tell it to start a command. Without arguments, the conda and Python 
         virtual environments will be initialised, but this is not the case as soon as
-        arguments are used.
+        arguments are used. It takes the command line arguments that bash can also take.
 
     -   `make-squashfs`: Make the user-software.squashfs file that would then be mounted
         in the container after reloading the module. This will enhance performance if
@@ -98,7 +114,7 @@ a SquashFS file from it for better file system performance). You can also use th
 `/user-software` subdirectory in the container to install other software through other methods.
 
 
-## Examples
+## Examples with the wrapper scripts
 
 Note: In the examples below you may need to replace the `standard-g` queue with a [different
 slurm partition allocatable per node]([Containers up to and including the 20240209 ones](https://docs.lumi-supercomputer.eu/runjobs/scheduled-jobs/partitions/#slurm-partitions-allocatable-by-node)) 
@@ -299,7 +315,6 @@ it will be injected in the container by the `singularity` command.
     export MIOPEN_USER_DB_PATH="/tmp/$(whoami)-miopen-cache-$SLURM_NODEID"
     export MIOPEN_CUSTOM_CACHE_DIR=$MIOPEN_USER_DB_PATH
 
-    # Set MIOpen cache to a temporary folder.
     if [ $SLURM_LOCALID -eq 0 ] ; then
         rm -rf $MIOPEN_USER_DB_PATH
         mkdir -p $MIOPEN_USER_DB_PATH
@@ -308,7 +323,7 @@ it will be injected in the container by the `singularity` command.
 
     # Set interfaces to be used by RCCL.
     # This is needed as otherwise RCCL tries to use a network interface it has
-    # noa ccess to on LUMI.
+    # no access to on LUMI.
     export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
     export NCCL_NET_GDR_LEVEL=3
 
@@ -362,7 +377,7 @@ it will be injected in the container by the `singularity` command.
 
     We also set `ROCR_VISIBLE_DEVICES` to ensure that each task uses the proper GPU.
 
-    Furthermore some environment variables are needed by PyTorch itself and are also needed on
+    Furthermore some environment variables are needed by PyTorch itself that are also needed on
     NVIDIA systems.
 
     PyTorch needs to find the master for communication which is done through
@@ -383,7 +398,7 @@ it will be injected in the container by the `singularity` command.
     this version of the script.**
 
 
-## Installation
+## Installation with EasyBuild
 
 To install the container with EasyBuild, follow the instructions in the
 [EasyBuild section of the LUMI documentation, section "Software"](https://docs.lumi-supercomputer.eu/software/installing/easybuild/),
@@ -504,11 +519,11 @@ ls /user-software/venv/pytorch/lib/python3.10/site-packages/
 and you'll get output similar to
 
 ```
-_distutils_hack			      pkg_resources
-distutils-precedence.pth	      setuptools
-lightning_utilities		      setuptools-65.5.0.dist-info
+_distutils_hack			              pkg_resources
+distutils-precedence.pth	          setuptools
+lightning_utilities		              setuptools-65.5.0.dist-info
 lightning_utilities-0.11.1.dist-info  torchmetrics
-pip				      torchmetrics-1.3.2.dist-info
+pip				                      torchmetrics-1.3.2.dist-info
 pip-23.0.1.dist-info
 ```
 
@@ -595,10 +610,10 @@ Try, e.g.,
 pip install lightning-utilities
 ```
 
-and notice that the package (likely) landed in `~/.local/lib//python3.10/site-packages`:
+and notice that the package (likely) landed in `~/.local/lib/python3.10/site-packages`:
 
 ```
-ls ~/.local/lib//python3.10/site-packages
+ls ~/.local/lib/python3.10/site-packages
 ```
 
 will among other subdirectories contain the subdirectory `pytorch_lightning` and this is 
@@ -683,3 +698,272 @@ The third line then creates the `user-software.squashfs` file and the last line 
 subdirectory. These four lines are generic as the package list is defined via the 
 `local_pip_requirements` environment variable.
 
+
+## Alternative: Direct access
+
+### Getting the container image
+
+The PyTorch containers are available in the following subdirectories of `/appl/local/containers`:
+
+-   `/appl/local/containers/sif-images`: Symbolic link to the latest version of the container
+    with the given mix of components/packages mentioned in the filename.
+    Other packages in the container may vary over time and change without notice.
+
+-   `/appl/local/containers/tested-containers`: Tested containers provided as a Singulartiy `.sif` file
+    and a docker-generated tarball. Containers in this directory are removed quickly when a new version
+    becomes available.
+
+-   `/appl/local/containers/easybuild-sif-images`: Singularity `.sif` images used with the EasyConfigs
+    that we provide. They tend to be available for a longer time than in the other two subdirectories.
+
+If you depend on a particular version of a container, we recommend that you copy the container to
+your own file space (e.g., in `/project`,) as there is no guarantee the specific version will remain
+available centrally on the system for as long as you want.
+
+When using the containers without the modules, you will have to take care of the bindings as some
+system files are needed for, e.g., RCCL. The recommended mininmal bindings are:
+
+```
+-B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4
+```
+
+and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`.
+
+Note that the list recommended bindings may change after a system update.
+
+Alternatively, you can also build your [own container image on top of the
+ROCm containers that we provide with cotainr](../../r/rocm/index.md#using-the-images-as-base-image-for-cotainr).
+
+If you use PyTorch containers from other sources, take into account that
+
+-   They need to explicitly use ROCm-enabled versions of the packages. NVIDIA packages
+    will not work.
+
+-   The RCCL implementation provided in the container will likely not work well with the
+    communication network and the 
+    [AWS RCCL plugin for OFI](../../a/aws-ofi-rccl/index.md) plugin will still need to be 
+    installed in a way that the libfabric library on LUMI is used.
+
+-   Similarly the `mpi4py` package (if included) may not be compatible with the interconnect
+    on LUMI, also resulting in poor performance or failure. You may want to make sure that an
+    MPI implementation that is ABI-compatible with Cray MPICH is used so that you can then try
+    to overwrite it with Cray MPICH.
+
+The LUMI User Support Team tries to support the containers that it provides as good as possible,
+but we are not the PyTorch support team and have limited resources. In no way is it the task of
+the LUST to support any possible container from any possible source. See also our page
+["Software Install Policy](https://docs.lumi-supercomputer.eu/software/policy/)
+in the main LUMI documentation.
+
+### Example: Distributed learning without the wrappers
+
+For easy comparison, we use the same
+[mnist example](https://github.com/Lumi-supercomputer/lumi-reframe-tests/tree/main/checks/containers/ML_containers/src/pytorch/mnist)
+already used in the ["Distributed learning example" with the wrapper scripts](index.md#distributed-learning-example).
+The text is written in such a way though that it can be read without first reading that section.
+
+First one needs to create the script `get-master.py` that will be used to determine the
+master node for communication:
+
+``` python
+import argparse
+def get_parser():
+    parser = argparse.ArgumentParser(description="Extract master node name from Slurm node list",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("nodelist", help="Slurm nodelist")
+    return parser
+
+
+if __name__ == '__main__':
+    parser = get_parser()
+    args = parser.parse_args()
+
+    first_nodelist = args.nodelist.split(',')[0]
+
+    if '[' in first_nodelist:
+        a = first_nodelist.split('[')
+        first_node = a[0] + a[1].split('-')[0]
+
+    else:
+        first_node = first_nodelist
+
+    print(first_node)
+```
+
+Next we need another script that will run in the container to set up a number of
+environment variables that are needed to run PyTorch successfully on LUMI and at
+the end, call Python to run our example. Let's store the following script as
+`run-pytorch.py`.
+
+``` python
+#!/bin/bash -e
+
+# Make sure GPUs are up
+if [ $SLURM_LOCALID -eq 0 ] ; then
+    rocm-smi
+fi
+sleep 2
+
+# !Remove this if using an image extended with cotainr or a container from elsewhere.!
+# Start conda environment inside the container
+$WITH_CONDA
+
+# MIOPEN needs some initialisation for the cache as the default location
+# does not work on LUMI as Lustre does not provide the necessary features.
+export MIOPEN_USER_DB_PATH="/tmp/$(whoami)-miopen-cache-$SLURM_NODEID"
+export MIOPEN_CUSTOM_CACHE_DIR=$MIOPEN_USER_DB_PATH
+
+if [ $SLURM_LOCALID -eq 0 ] ; then
+    rm -rf $MIOPEN_USER_DB_PATH
+    mkdir -p $MIOPEN_USER_DB_PATH
+fi
+sleep 2
+
+# Optional! Set NCCL debug output to check correct use of aws-ofi-rccl (these are very verbose)
+export NCCL_DEBUG=INFO
+export NCCL_DEBUG_SUBSYS=INIT,COLL
+
+# Set interfaces to be used by RCCL.
+# This is needed as otherwise RCCL tries to use a network interface it has
+# no access to on LUMI.
+export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+export NCCL_NET_GDR_LEVEL=3
+
+# Set ROCR_VISIBLE_DEVICES so that each task uses the proper GPU
+export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
+
+# Report affinity to check
+echo "Rank $SLURM_PROCID --> $(taskset -p $$); GPU $ROCR_VISIBLE_DEVICES"
+
+# The usual PyTorch initialisations (also needed on NVIDIA)
+# Note that since we fix the port ID it is not possible to run, e.g., two
+# instances via this script using half a node each.
+export MASTER_ADDR=$(python get-master.py "$SLURM_NODELIST")
+export MASTER_PORT=29500
+export WORLD_SIZE=$SLURM_NPROCS
+export RANK=$SLURM_PROCID
+export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
+
+# Run app
+cd mnist
+python -u mnist_DDP.py --gpu --modelpath model
+```
+
+??? Note "What's going on in this script? (click to expand)"
+    The script sets a number of environment variables. Some are fairly standard when using PyTorch
+    on an HPC cluster while others are specific for the LUMI interconnect and architecture or the 
+    AMD ROCm environment.
+
+    At the start we just print some information about the GPU. We do this only ones on each node
+    on the process which is why we test on `$SLURM_LOCALID`, which is a numbering starting from 0
+    on each node of the job:
+
+    ``` bash
+    if [ $SLURM_LOCALID -eq 0 ] ; then
+        rocm-smi
+    fi
+    sleep 2
+    ```
+
+    The container uses a Conda environment internally. So to make the right version of Python
+    and its packages availabe, we need to activate the environment. The precise command to
+    activate the environment is stored in `$WITH_CONDA` and we can just call it by specifying
+    the variable as a bash command.
+
+    The `MIOPEN_` environment variables are needed to make 
+    [MIOpen](https://rocm.docs.amd.com/projects/MIOpen/en/latest/) create its caches on `/tmp`
+    as doing this on Lustre fails because of file locking issues:
+
+    ``` bash
+    export MIOPEN_USER_DB_PATH="/tmp/$(whoami)-miopen-cache-$SLURM_NODEID"
+    export MIOPEN_CUSTOM_CACHE_DIR=$MIOPEN_USER_DB_PATH
+
+    if [ $SLURM_LOCALID -eq 0 ] ; then
+        rm -rf $MIOPEN_USER_DB_PATH
+        mkdir -p $MIOPEN_USER_DB_PATH
+    fi
+    ```
+
+    It is also essential to tell RCCL, the communication library, which network adapters to use. 
+    These environment variables start with `NCCL_` because ROCm tries to keep things as similar as
+    possible to NCCL in the NVIDIA ecosystem:
+
+    ```
+    export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
+    export NCCL_NET_GDR_LEVEL=3
+    ```
+
+    Without this RCCL may try to use a network adapter meant for system management rather than
+    inter-node communications!
+
+    We also set `ROCR_VISIBLE_DEVICES` to ensure that each task uses the proper GPU.
+    This is again based on the local task ID of each Slurm task.
+
+    Furthermore some environment variables are needed by PyTorch itself that are also needed on
+    NVIDIA systems.
+
+    PyTorch needs to find the master for communication which is done through the
+    `get-master.py` script that we created before:
+
+    ``` bash
+    export MASTER_ADDR=$(python get-master.py "$SLURM_NODELIST")
+    export MASTER_PORT=29500
+    ```
+
+    **As we fix the port number here, the `conda-python-distributed` script that we provide, 
+    has to run on exclusive nodes.
+    Running, e.g., 2 4-GPU jobs on the same node with this command will not work as there will be
+    a conflict for the TCP port for communication on the master as `MASTER_PORT` is hard-coded in 
+    this version of the script.**
+
+
+The mnist example also needs some data files. We can get them in the job script (as we did before)
+but also simply install them now, avoiding repeated downloads when using the script multiple times
+(in the example with wrappers it was in the job script to have a one file example).
+Assuming you do this on the login nodes where the `wget` program is already available,
+
+``` bash
+mkdir mnist ; pushd mnist
+wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/main/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+mkdir -p model ; cd model
+wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/main/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+popd
+```
+
+And finaly we can create our jobscript, e.g. `mnist.slurm`, which we will launch from the directory
+that also contains the `mnist` subdirectory and `get-master.py` and `run-pythorch.sh` scripts and the
+container image.
+
+```bash
+#!/bin/bash -e
+#SBATCH --nodes=4
+#SBATCH --gpus-per-node=8
+#SBATCH --tasks-per-node=8
+#SBATCH --cpus-per-task=7
+#SBATCH --output="output_%x_%j.txt"
+#SBATCH --partition=standard-g
+#SBATCH --mem=480G
+#SBATCH --time=00:10:00
+#SBATCH --account=project_<your_project_id>
+
+CONTAINER=your-container-image.sif
+
+c=fe
+MYMASKS="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
+
+srun --cpu-bind=mask_cpu:$MYMASKS \
+  singularity exec \
+    -B /var/spool/slurmd \
+    -B /opt/cray \
+    -B /usr/lib64/libcxi.so.1 \
+    -B /usr/lib64/libjansson.so.4 \
+    -B $PWD:/workdir \
+    $CONTAINER /workdir/run-pytorch.sh
+```
+
+
+## Known restrictions and problems
+
+-   `torchrun` cannot be used on LUMI (and many other HPC clusters) as it uses a mechanism
+    to start tasks that does not go through the resource manager of the cluster and hence
+    if enabled could enable users to steal resources from other users on shared nodes.
