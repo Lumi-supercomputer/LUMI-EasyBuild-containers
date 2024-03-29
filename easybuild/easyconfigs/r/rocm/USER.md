@@ -90,7 +90,7 @@ The ROCm containers are available in the following subdirectories of `/appl/loca
 -   `/appl/local/containers/sif-images`: Symbolic link to the latest version of the container
     for each ROCm version provided. Those links can change without notice!
 
--   `/appl/local/containers/tested-containers`: Tested containers provides as a Singulartiy `.sif` file
+-   `/appl/local/containers/tested-containers`: Tested containers provided as a Singulartiy `.sif` file
     and a docker-generated tarball. Containers in this directory are removed quickly when a new version
     becomes available.
 
@@ -108,7 +108,7 @@ system files are needed for, e.g., RCCL. The recommended mininmal bindings are:
 -B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4
 ```
 
-and the bindings you need to acces the files you want to use from `/scratch`, `/flash` and/or `/project`.
+and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`.
 
 Note that the list recommended bindings may change after a system update.
 
