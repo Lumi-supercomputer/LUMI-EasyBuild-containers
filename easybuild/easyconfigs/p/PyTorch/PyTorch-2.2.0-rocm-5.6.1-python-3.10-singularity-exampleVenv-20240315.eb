@@ -9,6 +9,9 @@
 #DOC
 #DOC This version works with $WITH_CONDA, $WITH_VENV and $WITH_CONDA_VENV for initialisation of the 
 #DOC conda / Python venv / or both environments respectively.
+#DOC
+#DOC This environment is experimental and only meant as an example of what can be done, but may
+#DOC not be fully functional for everybody. Most users should use the non-exampleVenv versions.
 
 easyblock = 'MakeCp'
 
