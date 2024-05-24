@@ -1,11 +1,17 @@
 # Developed by Kurt Lust and Mihkel Tiks for LUMI
 #DOC Contains PyTorch 2.2.0 with torchaudio 2.2.0, torchdata 0.7.1+cpu, torchtext 0.17.0+cpu,
-#DOC torchvision 0.17.0 GPU version, torchmetrics 1.3.2, DeepSpeed 0.12.3,  flash-attention 2.0.4 and
+#DOC torchvision 0.17.0 GPU version, DeepSpeed 0.12.3,  flash-attention 2.0.4 and
 #DOC xformers 0.0.25+8dd471d.d20240209, on Python 3.10 and ROCm 5.6.1.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
 #DOC
+#DOC As an example of how installation in the virtual environment can be automated through EasyBuild,
+#DOC torchmetrics and pytorch-lightning are installed in the virtual environment.
+#DOC
 #DOC This version works with $WITH_CONDA, $WITH_VENV and $WITH_CONDA_VENV for initialisation of the 
 #DOC conda / Python venv / or both environments respectively.
+#DOC
+#DOC This environment is experimental and only meant as an example of what can be done, but may
+#DOC not be fully functional for everybody. Most users should use the non-exampleVenv versions.
 
 easyblock = 'MakeCp'
 

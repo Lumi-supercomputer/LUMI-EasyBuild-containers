@@ -1,29 +1,30 @@
 # Developed by Kurt Lust and Mihkel Tiks for LUMI
-#DOC Contains PyTorch 2.2.0 with torchaudio 2.2.0, torchdata 0.7.1+cpu, torchtext 0.17.0+cpu,
-#DOC torchvision 0.17.0 GPU version, DeepSpeed 0.12.3,  flash-attention 2.0.4 and
-#DOC xformers 0.0.25+8dd471d.d20240209, on Python 3.10 and ROCm 5.6.1.
+#DOC Contains PyTorch 2.2.2 with torchaudio 2.2.2, torchdata 0.7.1+cpu, torchtext 0.17.2+cpu,
+#DOC torchvision 0.17.2 GPU version, DeepSpeed 0.14.0,  flash-attention 2.0.4 and
+#DOC xformers 0.0.26+82368ac.d20240403, on Python 3.10 and ROCm 5.6.1.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
 #DOC
 #DOC This version works with $WITH_CONDA, $WITH_VENV and $WITH_CONDA_VENV for initialisation of the 
-#DOC conda / Python venv / or both environments respectively.
+#DOC conda env, Python venv or both environments respectively.
 
 easyblock = 'MakeCp'
 
 local_c_rocm_version =    '5.6.1'
 local_c_python_mm =       '3.10'
-local_c_PyTorch_version = '2.2.0'
-local_dockerhash =        '7392c9d4dcf7'
+local_c_PyTorch_version = '2.2.2'
+local_dockerhash =        'de61e1058846'
+local_date =              '20240404'
 
-local_c_DeepSpeed_version =      '0.12.3'
+local_c_DeepSpeed_version =      '0.14.0'
 local_c_flashattention_version = '2.0.4'
-local_c_xformers_version =       '0.0.25+8dd471d.d20240209'
+local_c_xformers_version =       '0.0.26+82368ac.d20240403'
 
 local_conda_env = 'pytorch'
 
 
 name =          'PyTorch'
 version =       local_c_PyTorch_version
-versionsuffix = f'-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-singularity-20240315'
+versionsuffix = f'-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-singularity-{local_date}'
 
 local_sif =    f'lumi-pytorch-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-pytorch-v{local_c_PyTorch_version}-dockerhash-{local_dockerhash}.sif'
 #local_docker = f'lumi-pytorch-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-pytorch-v2.2.0.docker'
@@ -388,7 +389,3 @@ create_container_vars( '{local_sif}', 'PyTorch', '%(installdir)s', '{local_singu
 """
 
 moduleclass = 'devel'
-
-
-
-
