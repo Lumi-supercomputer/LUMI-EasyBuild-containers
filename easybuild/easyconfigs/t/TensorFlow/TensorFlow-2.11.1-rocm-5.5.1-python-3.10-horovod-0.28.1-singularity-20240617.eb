@@ -1,0 +1,101 @@
+easyblock = 'MakeCp'
+
+local_c_rocm_version =       '5.5.1'
+local_c_python_mm =          '3.10' # major.minor only
+local_c_Tensorflow_version = '2.11.1'
+local_c_horovod_version =    '0.28.1'
+local_dockerhash =           '40e06197e97b'
+local_date =                 '20240617'
+
+name =          'TensorFlow'
+version =       local_c_Tensorflow_version
+versionsuffix = f'-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-horovod-{local_c_horovod_version}-singularity-{local_date}'
+
+local_sif = f'lumi-tensorflow-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-tensorflow-{local_c_Tensorflow_version}-horovod-{local_c_horovod_version}-dockerhash-{local_dockerhash}.sif'
+#local_docker = 'lumi-tensorflow-rocm-5.5.1-python-3.10-tensorflow-2.11.1-horovod-0.28.1.docker'
+
+homepage = 'https://www.tensorflow.org/'
+
+whatis = [
+    'Description: TensorFlow, a machine learning package'
+]
+
+description = """
+This module provides a container with TensorFlow %(version)s. 
+
+The module defines a number of environment variables:
+*   SIF and SIFTENSORFLOW: The full path and name of the Singularity SIF file 
+    to use with singularity exec etc.
+*   SINGULAIRTY_BINDPATH: Mounts the necessary directories from the system,
+    including /users, /project, /scratch and /flash so that you should be
+    able to use your regular directories in the container.
+*   RUNSCRIPTS and RUNSCRIPTSPYTORCH: The directory with some sample
+    runscripts.
+    
+Note that this container uses a Conda environment internally. When in
+the container, the command to activate the container is contained in the
+environment variable WITH_CONDA.
+"""
+
+toolchain = SYSTEM
+
+sources = [
+    {
+        'filename':    local_sif,
+        'extract_cmd': '/bin/cp %s .'
+    },
+#    {
+#        'filename':    local_docker,
+#        'extract_cmd': '/bin/cp %s .'
+#    },
+]
+
+skipsteps = ['build']
+
+files_to_copy = [
+    ([local_sif],    '.'),
+#    ([local_docker], 'share/docker-defs/')    
+]
+
+local_runscript_python_simple="""
+#!/bin/bash -e
+
+# Start conda environment inside the container
+\$WITH_CONDA
+
+# Run application
+python "\$@"
+
+"""
+
+postinstallcmds = [
+    'mkdir -p %(installdir)s/runscripts',
+    f'cat >%(installdir)s/runscripts/python-conda-simple <<EOF {local_runscript_python_simple}EOF',
+    'chmod a+x %(installdir)s/runscripts/python-conda-simple'
+]
+
+sanity_check_paths = {
+    # We deliberately don't check for local_sif as the user is allowed to remove that file
+    # but may still want to regenerate the module which would then fail in the sanity check.
+    #'files': [f'share/docker-defs/{local_docker}'],
+    'files': [],
+    'dirs':  ['runscripts'],
+}
+
+modextravars = {
+    # SIF variables currently set by a function via modluafooter.
+    #'SIF':                 '%(installdir)s/' + local_sif,
+    #'SIFTENSORFLOW':       '%(installdir)s/' + local_sif,
+    'RUNSCRIPTS':           '%(installdir)s/runscripts',
+    'RUNSCRIPTSTENSORFLOW': '%(installdir)s/runscripts',
+    'SINGULARITY_BIND':     '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
+                            '%(installdir)s/runscripts:/runscripts,' + 
+                            '/pfs,/scratch,/projappl,/project,/flash,/appl'
+}
+
+modluafooter = f"""
+-- Call a routine to set the various environment variables.
+create_container_vars( '{local_sif}', '%(name)s', '%(installdir)s' )
+"""
+
+moduleclass = 'devel'
