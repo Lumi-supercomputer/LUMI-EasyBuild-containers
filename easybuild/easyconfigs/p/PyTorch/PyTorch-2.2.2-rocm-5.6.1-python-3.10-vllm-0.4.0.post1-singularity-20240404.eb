@@ -6,6 +6,9 @@
 #DOC
 #DOC This version works with $WITH_CONDA, $WITH_VENV and $WITH_CONDA_VENV for initialisation of the 
 #DOC conda env, Python venv or both environments respectively.
+#DOC
+#DOC If you experience problems with this container, it may be better to move to a more recent one
+#DOC (see the date encoded as yyyymmdd at the end of the filename).
 
 easyblock = 'MakeCp'
 
@@ -384,10 +387,10 @@ modextravars = {
     # The following lines inject environment variables into the container that
     # basically have the same effect as activating the conda environment and Python
     # virtual environment. When these are defined in the module, WITH_CONDA, WITH_VENV or
-    # WITGH_CONDA_VENV are not really needed.
+    # WITH_CONDA_VENV are not really needed.
     #
     'SINGULARITYENV_PREPEND_PATH':      '/runscripts:/user-software/venv/pytorch/bin:/opt/miniconda3/envs/pytorch/bin:/opt/miniconda3/condabin',
-    #'SINGULARITYENV_LD_PRELOAD':        f'/opt/rocm-{local_c_rocm_version}/lib/libpreload-me.so',
+    'SINGULARITYENV_LD_PRELOAD':        f'/opt/rocm-{local_c_rocm_version}/lib/libpreload-me.so',
     'SINGULARITYENV_CONDA_DEFAULT_ENV': 'pytorch',
     'SINGULARITYENV_CONDA_EXE':         '/opt/miniconda3/bin/conda',
     'SINGULARITYENV_CONDA_PREFIX':      '/opt/miniconda3/envs/pytorch',

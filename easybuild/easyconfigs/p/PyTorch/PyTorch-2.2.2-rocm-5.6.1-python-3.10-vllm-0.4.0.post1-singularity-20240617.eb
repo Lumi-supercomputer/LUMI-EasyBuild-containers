@@ -44,11 +44,9 @@ DeepSpeed {local_c_DeepSpeed_version}, flash-attention {local_c_flashattention_v
 
 This version of the container also tries to inject a fix for some problems
 caused by running ROCm 5.6.1 on a ROCm 5.2.3 driver. This is done via
-`LD_PRELOAD`.  The fix assumes that all node GPUs are visible at any given 
-point (i.e. no ROCR_VISIBLE_DEVICES or HIP_VISIBLE_DEVICES can set or the 
-equivalent SLURM settings) - GPUs must be selected within the app. You can 
+`LD_PRELOAD`.  In case you suspect the fix itself causes problems, you can 
 unload the fix by unsetting "SINGULARITYENV_LD_PRELOAD" after loading the 
-module and before entering the container, and if you use $WITH_CONDA, 
+module and before entering the container, or if you use $WITH_CONDA, 
 unsetting LD_PRELOAD after $WITH_CONDA.
 
 The module defines a number of environment variables available outside the
@@ -387,7 +385,7 @@ modextravars = {
     # WITGH_CONDA_VENV are not really needed.
     #
     'SINGULARITYENV_PREPEND_PATH':      '/runscripts:/user-software/venv/pytorch/bin:/opt/miniconda3/envs/pytorch/bin:/opt/miniconda3/condabin',
-    #'SINGULARITYENV_LD_PRELOAD':        f'/opt/rocm-{local_c_rocm_version}/lib/libpreload-me.so',
+    'SINGULARITYENV_LD_PRELOAD':        f'/opt/rocm-{local_c_rocm_version}/lib/libpreload-me.so', # Fix for ROCm memory reporting problems.
     'SINGULARITYENV_CONDA_DEFAULT_ENV': 'pytorch',
     'SINGULARITYENV_CONDA_EXE':         '/opt/miniconda3/bin/conda',
     'SINGULARITYENV_CONDA_PREFIX':      '/opt/miniconda3/envs/pytorch',
