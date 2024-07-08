@@ -1,22 +1,19 @@
 # Developed by Kurt Lust and Mihkel Tiks for LUMI
-#DOC Contains PyTorch 2.2.0 with torchaudio 2.2.0, torchdata 0.7.1+cpu, torchtext 0.17.0+cpu,
-#DOC torchvision 0.17.0 GPU version, torchmetrics 1.3.2, DeepSpeed 0.12.3,  flash-attention 2.0.4, 
-#DOC xformers 0.0.25+8dd471d.d20240209, and vllm 0.4.0.post1, on Python 3.10 and ROCm 5.6.1.
+#DOC Contains PyTorch 2.2.2 with torchaudio 2.2.2, torchdata 0.7.1, torchtext 0.17.2+cpu,
+#DOC torchvision 0.17.2 GPU version, DeepSpeed 0.12.3,  flash-attention 2.0.4, 
+#DOC xformers 0.0.26+82368ac.d20240403, and vllm 0.4.0.post1, on Python 3.10 and ROCm 5.6.1.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
 #DOC
 #DOC This version works with $WITH_CONDA, $WITH_VENV and $WITH_CONDA_VENV for initialisation of the 
 #DOC conda env, Python venv or both environments respectively.
-#DOC
-#DOC If you experience problems with this container, it may be better to move to a more recent one
-#DOC (see the date encoded as yyyymmdd at the end of the filename).
 
 easyblock = 'MakeCp'
 
 local_c_rocm_version =    '5.6.1'
 local_c_python_mm =       '3.10'
 local_c_PyTorch_version = '2.2.2'
-local_dockerhash =        '7dbd042516ed'
-local_date =              '20240404'
+local_dockerhash =        '40553937ac65'
+local_date =              '20240617'
 
 local_c_DeepSpeed_version =      '0.14.0'
 local_c_flashattention_version = '2.0.4'
@@ -47,11 +44,9 @@ DeepSpeed {local_c_DeepSpeed_version}, flash-attention {local_c_flashattention_v
 
 This version of the container also tries to inject a fix for some problems
 caused by running ROCm 5.6.1 on a ROCm 5.2.3 driver. This is done via
-`LD_PRELOAD`.  The fix assumes that all node GPUs are visible at any given 
-point (i.e. no ROCR_VISIBLE_DEVICES or HIP_VISIBLE_DEVICES can set or the 
-equivalent SLURM settings) - GPUs must be selected within the app. You can 
+`LD_PRELOAD`.  In case you suspect the fix itself causes problems, you can 
 unload the fix by unsetting "SINGULARITYENV_LD_PRELOAD" after loading the 
-module and before entering the container, and if you use $WITH_CONDA, 
+module and before entering the container, or if you use $WITH_CONDA, 
 unsetting LD_PRELOAD after $WITH_CONDA.
 
 The module defines a number of environment variables available outside the
@@ -387,10 +382,10 @@ modextravars = {
     # The following lines inject environment variables into the container that
     # basically have the same effect as activating the conda environment and Python
     # virtual environment. When these are defined in the module, WITH_CONDA, WITH_VENV or
-    # WITH_CONDA_VENV are not really needed.
+    # WITGH_CONDA_VENV are not really needed.
     #
     'SINGULARITYENV_PREPEND_PATH':      '/runscripts:/user-software/venv/pytorch/bin:/opt/miniconda3/envs/pytorch/bin:/opt/miniconda3/condabin',
-    'SINGULARITYENV_LD_PRELOAD':        f'/opt/rocm-{local_c_rocm_version}/lib/libpreload-me.so',
+    'SINGULARITYENV_LD_PRELOAD':        f'/opt/rocm-{local_c_rocm_version}/lib/libpreload-me.so', # Fix for ROCm memory reporting problems.
     'SINGULARITYENV_CONDA_DEFAULT_ENV': 'pytorch',
     'SINGULARITYENV_CONDA_EXE':         '/opt/miniconda3/bin/conda',
     'SINGULARITYENV_CONDA_PREFIX':      '/opt/miniconda3/envs/pytorch',
