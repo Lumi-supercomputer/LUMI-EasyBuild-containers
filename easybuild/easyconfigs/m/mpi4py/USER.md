@@ -87,7 +87,7 @@ licensed components from LUMI and some other files that are not included, it cur
 cannot be used to reconstruct the container and extend its definition.
 
 
-## Installation
+### Installation
 
 To install the container with EasyBuild, follow the instructions in the
 [EasyBuild section of the LUMI documentation, section "Software"](https://docs.lumi-supercomputer.eu/software/installing/easybuild/),
