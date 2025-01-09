@@ -7,6 +7,9 @@ The mpi4py container is developed by AMD specifically for LUMI and contains the
 necessary parts to run mpi4py on LUMI, including a suitable version of ROCm for the version of mpi4py.
 The container also contains cupy and is also built to support GPU-aware MPI.
 
+
+## Use via EasyBuild-generated modules
+
 The EasyBuild installation with the EasyConfigs mentioned below will do three things:
 
 1.  It will copy the container to your own file space. We realise containers can be
@@ -39,9 +42,15 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three th
         
 3.  It creates currently 1 script in the $RUNSCRIPTS directory:
 
-    -   `conda-python-simple`: This initialises Python in the container and then calls Python
+    -   `conda-python-simple`: This initialises Conda in the container and then calls Python
         with the arguments of `conda-python-simple`. It can be used, e.g., to run commands
         through Python that utilise a single task but all GPUs.
+        
+    and it creates 1 script in the `bin` subdirectory of the module to be used outside
+    the container:
+    
+    -   `start-shell`: Creates a shell in the container, but nothing more. The Conda
+        environment is not yet initialised.
         
 The container uses a miniconda environment in which Python and its packages are installed.
 That environment needs to be activated in the container when running, which can be done
@@ -63,7 +72,7 @@ does additional initialisations.
 Example (in an interactive session):
 
 ```
-module load LUMI mpi4py/2.1.0-rocm-5.6.1-python-3.10-singularity-20231110
+module load LUMI mpi4py/3.1.6-rocm-6.2.0-python-3.12-singularity-20241007
 salloc -N1 -pstandard-g -t 30:00
 srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
     -c 'import mpi4py'
@@ -86,13 +95,50 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb mpi4py-3.1.4-rocm-5.4.5-python-3.10-singularity-20231110.eb
+eb mpi4py-3.1.6-rocm-6.2.0-python-3.12-singularity-20241007.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
 is the `container` partition. The module will be available in all versions of the LUMI stack
 and in [the `CrayEnv` stack](https://docs.lumi-supercomputer.eu/runjobs/lumi_env/softwarestacks/#crayenv)
 (provided the environment variable `EBU_USER_PREFIX` points to the right location).
+
+
+## Direct access (use without the container module)
+
+The mpi4py containers are available in the following subdirectories of `/appl/local/containers`:
+
+-   `/appl/local/containers/sif-images`: Symbolic link to the latest version of the container
+    for each ROCm version provided. Those links can change without notice!
+
+-   `/appl/local/containers/tested-containers`: Tested containers provided as a Singulartiy `.sif` file
+    and a docker-generated tarball. Containers in this directory are removed quickly when a new version
+    becomes available.
+
+-   `/appl/local/containers/easybuild-sif-images`: Singularity `.sif` images used with the EasyConfigs
+    that we provide. They tend to be available for a longer time than in the other two subdirectories.
+
+If you depend on a particular version of a container, we recommend that you copy the container to
+your own file space (e.g., in `/project`) as there is no guarantee the specific version will remain
+available centrally on the system for as long as you want.
+
+When using the containers without the modules, you will have to take care of the bindings as some
+system files are needed for, e.g., MPI. The recommended minimal bindings are:
+
+```
+-B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1
+```
+
+and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`.
+You can get access to your files on LUMI in the regular location by also using the bindings
+
+```
+-B /pfs,/scratch,/projappl,/project,/flash,/appl
+```
+
+Note that the list recommended bindings may change after a system update or between 
+different containers. We do try to keep the EasyBuild recipes for the modules 
+up-to-date though to reflect those changes.
 
 
 ## Further links
