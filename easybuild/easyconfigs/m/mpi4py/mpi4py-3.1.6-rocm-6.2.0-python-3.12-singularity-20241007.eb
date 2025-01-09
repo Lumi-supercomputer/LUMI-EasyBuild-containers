@@ -90,8 +90,8 @@ fi
 
 postinstallcmds = [
     'mkdir -p %(installdir)s/runscripts',
-    f'cat >%(installdir)s/runscripts/python-conda-simple <<EOF {local_runscript_python_simple}EOF',
-    'chmod a+x %(installdir)s/runscripts/python-conda-simple',
+    f'cat >%(installdir)s/runscripts/conda-python-simple <<EOF {local_runscript_python_simple}EOF',
+    'chmod a+x %(installdir)s/runscripts/conda-python-simple',
     'mkdir -p %(installdir)s/bin',
     f'cat >%(installdir)s/bin/start-shell <<EOF {local_bin_start_shell}EOF',
     'chmod a+x %(installdir)s/bin/start-shell',
@@ -101,8 +101,8 @@ sanity_check_paths = {
     # We deliberately don't check for local_sif as the user is allowed to remove that file
     # but may still want to regenerate the module which would then fail in the sanity check.
     #'files': [f'share/docker-defs/{local_docker}'],
-    'files': [],
-    'dirs':  ['runscripts'],
+    'files': ['bin/start-shell', 'runscripts/conda-python-simple'],
+    'dirs':  [],
 }
 
 modextravars = {

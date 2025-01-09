@@ -73,8 +73,8 @@ Example (in an interactive session):
 
 ```
 module load LUMI mpi4py/3.1.6-rocm-6.2.0-python-3.12-singularity-20241007
-salloc -N1 -pstandard-g -t 30:00
-srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
+salloc -N1 -pstandard-g -t 10:00
+srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/conda-python-simple \
     -c 'import mpi4py'
 ```
 
