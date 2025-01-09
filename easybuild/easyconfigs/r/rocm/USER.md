@@ -1,4 +1,4 @@
-# PyTorch container user instructions
+# ROCm container user instructions
 
 **BETA VERSION, problems are possible and they may not be solved quickly.**
 
