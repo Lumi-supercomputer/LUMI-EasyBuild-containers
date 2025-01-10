@@ -112,6 +112,18 @@ environment `pytorch`. Inside the container, the virtual environment is availabl
 `$CONTAINERROOT/user-software/venv` (if this directory has not been removed after creating
 a SquashFS file from it for better file system performance). You can also use the 
 `/user-software` subdirectory in the container to install other software through other methods.
+In these containers it is also very easy to check which Python packages are installed 
+with
+
+```
+singularity exec $SIF pip list
+```
+
+or if the `start-shell` script is available (which is the case for most of these containers,
+
+```
+start-shell -c 'pip list'
+```
 
 
 ## Examples with the wrapper scripts
@@ -708,7 +720,7 @@ subdirectory. These four lines are generic as the package list is defined via th
 `local_pip_requirements` environment variable.
 
 
-## Alternative: Direct access
+## Alternative: Direct access (without the EasyBuild-generated PyTorch module)
 
 ### Getting the container image
 
@@ -733,10 +745,14 @@ When using the containers without the modules, you will have to take care of the
 system files are needed for, e.g., RCCL. The recommended mininmal bindings are:
 
 ```
--B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4
+-B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1
 ```
 
-and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`.
+and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`: 
+
+```
+-B /pfs,/scratch,/projappl,/project,/flash,/appl
+```
 
 Note that the list recommended bindings may change after a system update.
 
@@ -763,6 +779,7 @@ but we are not the PyTorch support team and have limited resources. In no way is
 the LUST to support any possible container from any possible source. See also our page
 ["Software Install Policy](https://docs.lumi-supercomputer.eu/software/policy/)
 in the main LUMI documentation.
+
 
 ### Example: Distributed learning without the wrappers
 
@@ -970,14 +987,15 @@ The text is written in such a way though that it can be read without first readi
         -B /var/spool/slurmd \
         -B /opt/cray \
         -B /usr/lib64/libcxi.so.1 \
-        -B /usr/lib64/libjansson.so.4 \
         -B $PWD:/workdir \
         $CONTAINER /workdir/run-pytorch.sh
     ```
+    
+    (if you get mpi4py-related error messages in some of the older containers you may have to add `-B /usr/lib64/libjansson.so.4` also.)
 
 
-## Known restrictions and problems
+## Links
 
--   `torchrun` cannot be used on LUMI (and many other HPC clusters) as it uses a mechanism
-    to start tasks that does not go through the resource manager of the cluster and hence
-    if enabled could enable users to steal resources from other users on shared nodes.
+-   [Latest edition of the "Moving your AI training jobs to LUMI" workshop](https://lumi-supercomputer.github.io/AI-latest)
+
+    
