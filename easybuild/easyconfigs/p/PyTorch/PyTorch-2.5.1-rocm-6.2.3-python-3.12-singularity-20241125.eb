@@ -2,6 +2,7 @@
 #DOC Contains PyTorch 2.5.1 with torchaudio 2.5.1, torchdata 0.9.0+cpu, torchtext 0.18.0+cpu,
 #DOC torchvision 0.20.1 GPU version, DeepSpeed 0.15.1,  flash-attention 2.6.3, transformers 4.46.3,
 #DOC xformers 0.0.28+06b548c0.d20241106 and vllm 0.6.3.post2+rocm624, on Python 3.12 and ROCm 6.2.3.
+#DOC mpi4py 3.1.6 interfacing to Cray MPICH is also included.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
 #DOC
 #DOC This version works with $WITH_CONDA, $WITH_VENV and $WITH_CONDA_VENV for initialisation of the 
@@ -20,6 +21,7 @@ local_c_flashattention_version = '2.6.3'
 local_c_transformers_version =   '4.46.3'
 local_c_xformers_version =       '0.0.28+06b548c0.d20241106'
 local_c_vllm_version =           '0.6.3.post2+rocm624' 
+local_c_mpi4py_version =         '3.1.6'
 
 local_conda_env = 'pytorch'
 
@@ -42,7 +44,8 @@ description = f"""
 This module provides a container with PyTorch %(version)s (with torchaudio,
 torchdata, torchtext and torchvision) on Python {local_c_python_mm}. It also contains 
 DeepSpeed {local_c_DeepSpeed_version}, flash-attention {local_c_flashattention_version}, transformers {local_c_transformers_version}, 
-xformers {local_c_xformers_version} and vllm {local_c_vllm_version}.
+xformers {local_c_xformers_version} and vllm {local_c_vllm_version}. mpi4py {local_c_mpi4py_version} 
+interfacing with Cray MPICH is also included.
 
 The module defines a number of environment variables available outside the
 container:

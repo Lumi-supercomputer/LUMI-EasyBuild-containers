@@ -8,7 +8,7 @@ two possible ways:
 -   [Through modules and wrapper scripts generated via EasyBuild](index.md#module-and-wrapper-scripts)
 
 -   [Directly, with you taking care of all bindings and all necessary environment
-    variables.](index.md#alternative-direct-access)
+    variables.](index.md#alternative-direct-access-without-the-easybuild-generated-pytorch-module)
 
     These instructions will likely also work for the 
     [containers built on top of the ROCm containers with cotainr](../../r/rocm/index.md#using-the-images-as-base-image-for-cotainr).
@@ -756,6 +756,17 @@ and the bindings you need to access the files you want to use from `/scratch`, `
 
 Note that the list recommended bindings may change after a system update.
 
+If you want to quickly check what Python packages are available in the containers in those directories,
+you don't need all the bind points and a quick
+
+```
+singularity exec <path-to-sif-file> bash -c '$WITH_CONDA ; pip list'
+```
+
+will do. Note the single quotes though as we don't want the `$WITH_CONDA` to be expanded outside 
+the container (and of course replace `<path-to-sif-file>` with the actual path to and name of 
+the SIF file you want to check.)
+
 Alternatively, you can also build your [own container image on top of the
 ROCm containers that we provide with cotainr](../../r/rocm/index.md#using-the-images-as-base-image-for-cotainr).
 
@@ -770,7 +781,10 @@ If you use PyTorch containers from other sources, take into account that
     installed in a way that the libfabric library on LUMI is used.
 
 -   Similarly the `mpi4py` package (if included) may not be compatible with the interconnect
-    on LUMI, also resulting in poor performance or failure. You may want to make sure that an
+    on LUMI, also resulting in poor performance or failure. For AI packages, things will
+    often still be OK as MPI is often only used during the initialisation after which 
+    communication is done through RCCL. 
+    You may want to make sure that an
     MPI implementation that is ABI-compatible with Cray MPICH is used so that you can then try
     to overwrite it with Cray MPICH.
 
