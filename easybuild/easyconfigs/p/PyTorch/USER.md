@@ -38,7 +38,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
 
     If you prefer to use the centrally provided container, you can remove your copy 
     after loading of the module with `rm $SIF` followed by reloading the module. This
-    is however at your own risk. 
+    is at your own risk however. 
 
 2.  It will create a module file. 
     When loading the module, a number of environment variables will
@@ -48,7 +48,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
     -   `SIF` and `SIFPYTORCH` both contain the name and full path of the singularity
         container file.
         
-    -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
+    -   `SINGULARITY_BIND` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
         
@@ -119,7 +119,7 @@ with
 singularity exec $SIF pip list
 ```
 
-or if the `start-shell` script is available (which is the case for most of these containers,
+or if the `start-shell` script is available (which is the case for most of these containers),
 
 ```
 start-shell -c 'pip list'
@@ -164,7 +164,7 @@ module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240209
 singularity exec $SIF bash -c '$WITH_CONDA ; pip list'
 ```
 
-Notice the use of single quotes as with double quotes `$WITH_CONDA` would be expanded
+Notice the use of single quotes as with double quotes, `$WITH_CONDA` would be expanded
 by the shell before executing the singularity command, and at that time `WITH_CONDA` is
 not yet defined. To use the container it also doesn't matter which version of the 
 LUMI module is loaded, and in fact, loading CrayEnv would work as well.
@@ -176,7 +176,7 @@ For the containers from version 20240315 on, the `$WITH_CONDA` is no longer need
 In an interactive session, you still need to load the module and go into the container:
 
 ```
-module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 singularity shell $SIF
 ```
 
@@ -189,7 +189,7 @@ pip list
 Without an interactive session in the container, all that is now needed is
 
 ```
-module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 singularity exec $SIF pip list
 ```
 
@@ -206,8 +206,8 @@ arguments to the `python` command. E.g., the example below will import the `torc
 package in Python and then show the number of GPUs available to it:
 
 ```
-salloc -N1 -pstandard-g -t 30:00
-module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20240209
+salloc -N1 -pstandard-g -t 10:00
+module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240209
 srun -N1 -n1 --gpus 8 singularity exec $SIF conda-python-simple \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 exit
@@ -231,8 +231,8 @@ for compatibility with job scripts developed before those containers became avai
 The following commands now work just as well:
 
 ```
-salloc -N1 -pstandard-g -t 30:00
-module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+salloc -N1 -pstandard-g -t 10:00
+module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 srun -N1 -n1 --gpus 8 singularity exec $SIF python \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 exit
@@ -258,7 +258,7 @@ Together these scripts make job scripts a lot easier.
 An example job script using the [mnist example](https://github.com/Lumi-supercomputer/lumi-reframe-tests/tree/main/checks/containers/ML_containers/src/pytorch/mnist)
 (itself based on an example by Google) is:
 
-1.  The mnist example needs some data files. We can get them in the job script (as we did before)
+1.  The mnist example needs some data files. We can get them in the job script
     but also simply install them now, avoiding repeated downloads when using the script multiple times
     (in the example with wrappers it was in the job script to have a one file example).
     First create a directory for your work on this example and go into that directory.
@@ -427,7 +427,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb PyTorch-2.2.0-rocm-5.6.1-python-3.10-singularity-20240315.eb
+eb PyTorch-2.3.1-rocm-6.0.3-python-3.12-singularity-20240923.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
@@ -456,12 +456,12 @@ so the general principles really need to be discussed in the main LUMI docs.
 ### Manual procedure
 
 Let's demonstrate how the module can be extended by using `pip` to install packages in the virtual
-environment. We'll demonstrate using the `PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315`
+environment. We'll demonstrate using the `PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923`
 module where we assume that you have already installed this module:
 
 ``` bash
 module load CrayEnv
-module load PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 ```
 
 Let's check a directory outside the container:
@@ -534,18 +534,15 @@ successfully loaded.
 Now execute 
 
 ``` bash
-ls /user-software/venv/pytorch/lib/python3.10/site-packages/
+ls /user-software/venv/pytorch/lib/python3.12/site-packages/
 ```
 
 and you'll get output similar to
 
 ```
-_distutils_hack			              pkg_resources
-distutils-precedence.pth	          setuptools
-lightning_utilities		              setuptools-65.5.0.dist-info
-lightning_utilities-0.11.1.dist-info  torchmetrics
-pip				                      torchmetrics-1.3.2.dist-info
-pip-23.0.1.dist-info
+lightning_utilities		      pip-24.0.dist-info
+lightning_utilities-0.11.9.dist-info  torchmetrics
+pip				      torchmetrics-1.6.1.dist-info
 ```
 
 which confirms that the `torchmetrics` package is indeed installed in the virtual environment.
@@ -554,7 +551,7 @@ Let's leave the container (by executing the `exit` command) and check again what
 the container:
 
 ``` bash
-ls $CONTAINERROOT/user-software/venv/pytorch/lib/python3.10/site-packages/
+ls $CONTAINERROOT/user-software/venv/pytorch/lib/python3.12/site-packages/
 ```
 
 and we get the same output as with the previous `ls` command. I.e., the installation file of the package
@@ -567,7 +564,7 @@ lfs find $CONTAINERROOT/user-software | wc -l
 ```
 
 where `lfs find` is a version of the `find` command with some restrictions, but one that is a lot more
-friendly to the Lustre metadata servers. The output suggests that there are over 2300 files and directories
+friendly to the Lustre metadata servers. The output suggests that there are over 1950 files and directories
 in the `user-software` subdirectory. The Lustre filesystem doesn't like working with lots of small files
 and Python can sometimes open a lot of those files in a short amount of time. 
 
@@ -587,7 +584,7 @@ The second command outputs something along the lines of
 ```
 bin
 easybuild
-lumi-pytorch-rocm-5.6.1-python-3.10-pytorch-v2.2.0-dockerhash-7392c9d4dcf7.sif
+lumi-pytorch-rocm-6.0.3-python-3.12-pytorch-v2.3.1-dockerhash-2c1c14cafd28.sif
 runscripts
 user-software
 user-software.squashfs
@@ -606,7 +603,7 @@ as it can be reconstructed (except for the file dates) from the SquashFS file us
 Reload the module to let the changes take effect and go again in the container:
 
 ``` bash
-module load PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 singularity shell $SIF
 ```
 
@@ -628,16 +625,16 @@ Defaulting to user installation because normal site-packages is not writeable
 Try, e.g.,
 
 ``` bash
-pip install lightning-utilities
+pip install lightning==2.2.5
 ```
 
-and notice that the package (likely) landed in `~/.local/lib/python3.10/site-packages`:
+and notice that the package (likely) landed in `~/.local/lib/python3.12/site-packages`:
 
 ```
-ls ~/.local/lib/python3.10/site-packages
+ls ~/.local/lib/python3.12/site-packages
 ```
 
-will among other subdirectories contain the subdirectory `pytorch_lightning` and this is 
+will among other subdirectories contain the subdirectory `lightning` and this is 
 not entirely what we want.
 
 Yet it is still possible to install additional packages by first unsquashing the `user-software.squashfs` file
@@ -669,7 +666,7 @@ as that may slow down EasyBuild considerably.**
 
 In some cases it is possible to adapt the EasyConfig file to also install the additional Python packages
 that are not yet included in the container. This is demonstrated in the 
-`PyTorch-2.2.0-rocm-5.6.1-python-3.10-singularity-exampleVenv-20240315.eb` example EasyConfig file
+`PyTorch-2.3.1-rocm-6.0.3-python-3.12-singularity-exampleVenv-20240923.eb` example EasyConfig file
 which is available on LUMI. First load EasyBuild to install containers, e.g.,
 
 ``` bash
@@ -679,7 +676,7 @@ module load LUMI partition/container EasyBuild-user
 and then we can use EasyBuild to copy the recipe to our current directory:
 
 ``` bash
-eb --copy-ec PyTorch-2.2.0-rocm-5.6.1-python-3.10-singularity-exampleVenv-20240315.eb .
+eb --copy-ec PyTorch-2.3.1-rocm-6.0.3-python-3.12-singularity-exampleVenv-20240923.eb .
 ```
 
 You can now inspect the `.eb` file with your favourite editor. This file basically defines a lot
