@@ -43,7 +43,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three th
     -   `SIF` and `SIFROCM` both contain the name and full path of the singularity
         container file.
         
-    -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
+    -   `SINGULARITY_BIND` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
 

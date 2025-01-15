@@ -37,7 +37,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
     -   `SIF` and `SIFJAX` both contain the name and full path of the singularity
         container file.
         
-    -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
+    -   `SINGULARITY_BIND` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
         
@@ -94,7 +94,7 @@ module load LUMI jax/0.4.28-rocm-6.2.0-python-3.12-singularity-20241007
 start-shell -c '/runscripts/conda-python-simple -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"'
 ```
 
-The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
+The container (when used with `SINGULARITY_BIND` of the module) also provides
 one or more wrapper scripts to start Python from the
 conda environment in the container. Those scripts are also available outside the 
 container for inspection after loading the module in the 

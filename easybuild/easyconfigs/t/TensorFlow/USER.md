@@ -34,7 +34,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three th
     -   `SIF` and `SIFTENSORFLOW` both contain the name and full path of the singularity
         container file.
         
-    -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
+    -   `SINGULARITY_BIND` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
         
@@ -68,7 +68,7 @@ with the command that is available in the container as the environment variable
 `WITH_CONDA` (which for this container is
 `source /opt/miniconda3/bin/activate tensorflow`).
 
-The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
+The container (when used with `SINGULARITY_BIND` of the module) also provides
 the wrapper script `/runscripts/conda-python-simple` to start the Python command from the
 conda environment in the container. That script is also available outside the 
 container for inspection after loading the module as
