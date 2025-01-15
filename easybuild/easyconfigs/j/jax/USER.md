@@ -11,6 +11,9 @@ tests we did), and there might be problems that cannot be fixed by the
 support team. This is software for users with a development spirit, not
 for users who expect something that simply and always works.**
 
+
+## Use via EasyBuild-generated modules
+
 The EasyBuild installation with the EasyConfigs mentioned below will do four things:
 
 1.  It will copy the container to your own file space. We realise containers can be
@@ -31,14 +34,14 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
     be set to help you use the module and to make it easy to swap the module with a
     different version in your job scripts.
     
-    -   `SIF` and `SIFPYTORCH` both contain the name and full path of the singularity
+    -   `SIF` and `SIFJAX` both contain the name and full path of the singularity
         container file.
         
-    -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
+    -   `SINGULARITY_BIND` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
         
-    -   `RUNSCRIPTS` and `RUNSCRIPTSPYTORCH` contain the full path of the directory
+    -   `RUNSCRIPTS` and `RUNSCRIPTSJAX` contain the full path of the directory
         containing some sample run scripts that can be used to run software in the 
         container, or as inspiration for your own variants.
         
@@ -72,7 +75,7 @@ Example of the use of `WITH_CONDA`: Check the Python packages in the container
 in an interactive session:
 
 ```
-module load LUMI jax/0.4.13-rocm-5.6.1-python-3.10-singularity-20240207
+module load LUMI jax/0.4.28-rocm-6.2.0-python-3.12-singularity-20241007
 singularity shell $SIF
 ```
 
@@ -87,11 +90,11 @@ pip list
 An example of the use of `start-shell` that even works on the login nodes is:
 
 ```
-module load LUMI jax/0.4.13-rocm-5.6.1-python-3.10-singularity-20240207
+module load LUMI jax/0.4.28-rocm-6.2.0-python-3.12-singularity-20241007
 start-shell -c '/runscripts/conda-python-simple -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"'
 ```
 
-The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
+The container (when used with `SINGULARITY_BIND` of the module) also provides
 one or more wrapper scripts to start Python from the
 conda environment in the container. Those scripts are also available outside the 
 container for inspection after loading the module in the 
@@ -102,14 +105,14 @@ does additional initialisations.
 Example (in an interactive session):
 
 ```
-salloc -N1 -pstandard-g -t 30:00
-module load LUMI jax/0.4.13-rocm-5.6.1-python-3.10-singularity-20240207
+salloc -N1 -pstandard-g -t 10:00
+module load LUMI jax/0.4.28-rocm-6.2.0-python-3.12-singularity-20241007
 srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/conda-python-simple \
     -c 'import jax; print("I have these devices:", jax.devices("gpu"))'
 ```
 
 
-## Installation
+### Installation
 
 To install the container with EasyBuild, follow the instructions in the
 [EasyBuild section of the LUMI documentation, section "Software"](https://docs.lumi-supercomputer.eu/software/installing/easybuild/),
@@ -117,10 +120,48 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb jax-0.4.13-rocm-5.6.1-python-3.10-singularity-20240207.eb
+eb jax-0.4.28-rocm-6.2.0-python-3.12-singularity-20241007.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
 is the `container` partition. The module will be available in all versions of the LUMI stack
 and in [the `CrayEnv` stack](https://docs.lumi-supercomputer.eu/runjobs/lumi_env/softwarestacks/#crayenv)
 (provided the environment variable `EBU_USER_PREFIX` points to the right location).
+
+
+## Direct access (use without the container module)
+
+The jax containers are available in the following subdirectories of `/appl/local/containers`:
+
+-   `/appl/local/containers/sif-images`: Symbolic link to the latest version of the container
+    for each ROCm version provided. Those links can change without notice!
+
+-   `/appl/local/containers/tested-containers`: Tested containers provided as a Singulartiy `.sif` file
+    and a docker-generated tarball. Containers in this directory are removed quickly when a new version
+    becomes available.
+
+-   `/appl/local/containers/easybuild-sif-images`: Singularity `.sif` images used with the EasyConfigs
+    that we provide. They tend to be available for a longer time than in the other two subdirectories.
+
+If you depend on a particular version of a container, we recommend that you copy the container to
+your own file space (e.g., in `/project`) as there is no guarantee the specific version will remain
+available centrally on the system for as long as you want.
+
+When using the containers without the modules, you will have to take care of the bindings as some
+system files are needed for, e.g., MPI. The recommended minimal bindings are:
+
+```
+-B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1
+```
+
+and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`.
+You can get access to your files on LUMI in the regular location by also using the bindings
+
+```
+-B /pfs,/scratch,/projappl,/project,/flash,/appl
+```
+
+Note that the list recommended bindings may change after a system update or between 
+different containers. We do try to keep the EasyBuild recipes for the modules 
+up-to-date though to reflect those changes.
+

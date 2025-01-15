@@ -1,4 +1,4 @@
-# PyTorch container user instructions
+# ROCm container user instructions
 
 **BETA VERSION, problems are possible and they may not be solved quickly.**
 
@@ -13,8 +13,9 @@ and it is also possible in some cases to extend them using the so-called
 
 **It is entirely normal that some features in some of the containers will not work.
 Each ROCm driver supports only particular versions of packages. E.g., the ROCm 
-driver from ROCm 5.2.3 is only guaranteed to support ROCm versions up to and including 5.4
-and hence problems can be expected with ROCm 5.5 and newer. There is nothing LUMI
+driver from ROCm 6.0.3 is only guaranteed to support ROCm versions between 5.6 and 
+6.2 and hence problems can be expected with ROCm 5.5 or older and ROCm 6.3 or newer.
+There is nothing LUMI
 support can do about it. Only one driver version can be active on the system,
 and installing a newer version depends on other software on the system also and
 is not as trivial as it would be on a PC.**
@@ -42,7 +43,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three th
     -   `SIF` and `SIFROCM` both contain the name and full path of the singularity
         container file.
         
-    -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
+    -   `SINGULARITY_BIND` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
 
@@ -75,7 +76,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb rocm-5.6.1-singularity-20231108.eb
+eb rocm-6.0.3-singularity-20241004.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
@@ -102,15 +103,27 @@ your own file space (e.g., in `/project`) as there is no guarantee the specific 
 available centrally on the system for as long as you want.
 
 When using the containers without the modules, you will have to take care of the bindings as some
-system files are needed for, e.g., RCCL. The recommended mininmal bindings are:
+system files are needed for, e.g., RCCL. The recommended minimal bindings are:
+
+```
+-B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1
+```
+
+or, for those containers where MPI still fails to load due to a missing libjansson,
 
 ```
 -B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4
 ```
 
 and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`.
+You can get access to your files on LUMI in the regular location by also using the bindings
+
+```
+-B /pfs,/scratch,/projappl,/project,/flash,/appl
+```
 
 Note that the list recommended bindings may change after a system update.
+
 
 ## Using the images as base image for cotainr
 
@@ -125,36 +138,31 @@ image.
 
 ??? Example "PyTorch with cotainr (click to expand)"
     To start, create a Yaml file to tell cotainr which software should be installed.
-    As an example, consider the file below which we name `py311_rocm542_pytorch.yml`  
+    As an example, consider the file below which we name `py312_rocm603_pytorch.yml`  
 
     ```yaml
-    name: py311_rocm542_pytorch
+    name: minimal_pytorch
     channels:
     - conda-forge
     dependencies:
-    - certifi=2023.07.22
-    - charset-normalizer=3.2.0
-    - filelock=3.12.4
-    - idna=3.4
-    - jinja2=3.1.2
-    - lit=16.0.6
-    - markupsafe=2.1.3
+    - filelock=3.15.4
+    - fsspec=2024.9.0
+    - jinja2=3.1.4
+    - markupsafe=2.1.5
     - mpmath=1.3.0
-    - networkx=3.1
-    - numpy=1.25.2
-    - pillow=10.0.0
-    - pip=23.2.1
-    - python=3.11.5
-    - requests=2.31.0
-    - sympy=1.12
-    - typing-extensions=4.7.1
-    - urllib3=2.0.4
+    - networkx=3.3
+    - numpy=2.1.1
+    - pillow=10.4.0
+    - pip=24.0
+    - python=3.12.3
+    - sympy=1.13.2
+    - typing-extensions=4.12.2
     - pip:
-        - --extra-index-url https://download.pytorch.org/whl/rocm5.4.2/
-        - pytorch-triton-rocm==2.0.2
-        - torch==2.0.1+rocm5.4.2
-        - torchaudio==2.0.2+rocm5.4.2
-        - torchvision==0.15.2+rocm5.4.2
+        - --extra-index-url https://download.pytorch.org/whl/rocm6.0/
+        - pytorch-triton-rocm==3.0.0
+        - torch==2.4.1+rocm6.0
+        - torchaudio==2.4.1+rocm6.0
+        - torchvision==0.19.1+rocm6.0
     ```
 
     Now we are ready to generate a new Singularity `.sif` file with this defintion:
@@ -162,12 +170,10 @@ image.
     ```bash
     module load LUMI
     module load cotainr
-    cotainr build my-new-image.sif --base-image=/appl/local/containers/sif-images/lumi-rocm-rocm-5.4.6.sif --conda-env=py311_rocm542_pytorch.yml
+    cotainr build my-new-image.sif --base-image=/appl/local/containers/sif-images/lumi-rocm-rocm-6.0.3.sif --conda-env=py312_rocm603_pytorch.yml
     ```
 
-    We don't have a container that matches the ROCm 5.4.2 version of ROCm for which the Python packages above
-    are generated (they are only available for a small selection of ROCm version) but the 5.4.6 container
-    should be close enough to work without problems.
+    As we are using a PyTorch wheel for ROCm 6.0, we use the container image for ROCm 6.0.3.
 
     You're now ready to use the new image with the direct access method. As in this example we installed
     PyTorch, the information on the [PyTorch page](../../p/PyTorch/) page in this guide is also very

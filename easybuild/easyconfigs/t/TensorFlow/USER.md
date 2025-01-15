@@ -1,4 +1,4 @@
-# PyTorch container user instructions
+# Tensorflow container user instructions
 
 **BETA VERSION, problems may occur and may not be solved quickly, 
 and the documentation needs further development.**
@@ -7,6 +7,9 @@ The TensorFlow container is developed by AMD specifically for LUMI and contains 
 necessary parts to run TensorFlow on LUMI, including the plugin needed for RCCL when
 doing distributed AI, and a suitable version of ROCm for the version of TensorFlow.
 Horovod is also provided, with support for Cray MPI.
+
+
+## Use via EasyBuild-generated modules
 
 The EasyBuild installation with the EasyConfigs mentioned below will do three things:
 
@@ -31,7 +34,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three th
     -   `SIF` and `SIFTENSORFLOW` both contain the name and full path of the singularity
         container file.
         
-    -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
+    -   `SINGULARITY_BIND` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
         
@@ -45,13 +48,27 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three th
         with the arguments of `conda-python-simple`. It can be used, e.g., to run commands
         through Python that utilise a single task but all GPUs.
         
+4.  It creates a `bin` directory with scripts to be run outside of the container:
+
+    -   `start-shell`: Serves a double purpose:
+    
+        -   Without further arguments, it will start a shell in the container with 
+            the Conda environment used to build the container activated.
+            
+        -   With arguments it simply runs a shell in the container, but the Conda 
+            environment will not be activated.
+            
+    The `bin` directory is not mounted in the container, but if you would, the 
+    scripts would recognise this and work or print a message that they cannot 
+    be used in that environment.
+        
 The container uses a miniconda environment in which Python and its packages are installed.
 That environment needs to be activated in the container when running, which can be done
 with the command that is available in the container as the environment variable
 `WITH_CONDA` (which for this container is
 `source /opt/miniconda3/bin/activate tensorflow`).
 
-The container (when used with `SINGULARITY_BINDPATH` of the module) also provides
+The container (when used with `SINGULARITY_BIND` of the module) also provides
 the wrapper script `/runscripts/conda-python-simple` to start the Python command from the
 conda environment in the container. That script is also available outside the 
 container for inspection after loading the module as
@@ -62,9 +79,9 @@ does additional initialisations.
 Example (in an interactive session):
 
 ```
-salloc -N1 -pstandard-g -t 30:00
-module load LUMI TensorFlow/2.11.1-rocm-5.5.1-python-3.10-horovod-0.28.1-singularity-20231110
-srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/python-conda-simple \
+salloc -N1 -pstandard-g -t 10:00
+module load LUMI TensorFlow/2.16.1-rocm-6.2.0-python-3.10-horovod-0.28.1-singularity-20241007
+srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/conda-python-simple \
     -c 'import tensorflow'
 ```
 (and the warning shown about being built with the oneAPI Deep Neural Network Library
@@ -76,8 +93,14 @@ is available in the `$EBROOTTENSORFLOW/share/docker-defs` subdirectory. As it re
 licensed components from LUMI and some other files that are not included, it currently
 cannot be used to reconstruct the container and extend its definition.
 
+!!! Note "Checking the packages in the container"
+    After installing and loading the module, run
+    ```
+    start-shell /runscripts/conda-python-simple -m pip list
+    ```
 
-## Installation
+
+### Installation
 
 To install the container with EasyBuild, follow the instructions in the
 [EasyBuild section of the LUMI documentation, section "Software"](https://docs.lumi-supercomputer.eu/software/installing/easybuild/),
@@ -85,10 +108,48 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb TensorFlow-2.11.1-rocm-5.5.1-python-3.10-horovod-0.28.1-singularity-20231110.eb
+eb TensorFlow-2.16.1-rocm-6.2.0-python-3.10-horovod-0.28.1-singularity-20241007.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
 is the `container` partition. The module will be available in all versions of the LUMI stack
 and in [the `CrayEnv` stack](https://docs.lumi-supercomputer.eu/runjobs/lumi_env/softwarestacks/#crayenv)
 (provided the environment variable `EBU_USER_PREFIX` points to the right location).
+
+
+## Direct access (use without the container module)
+
+The Tensorflow containers are available in the following subdirectories of `/appl/local/containers`:
+
+-   `/appl/local/containers/sif-images`: Symbolic link to the latest version of the container
+    for each ROCm version provided. Those links can change without notice!
+
+-   `/appl/local/containers/tested-containers`: Tested containers provided as a Singulartiy `.sif` file
+    and a docker-generated tarball. Containers in this directory are removed quickly when a new version
+    becomes available.
+
+-   `/appl/local/containers/easybuild-sif-images`: Singularity `.sif` images used with the EasyConfigs
+    that we provide. They tend to be available for a longer time than in the other two subdirectories.
+
+If you depend on a particular version of a container, we recommend that you copy the container to
+your own file space (e.g., in `/project`) as there is no guarantee the specific version will remain
+available centrally on the system for as long as you want.
+
+When using the containers without the modules, you will have to take care of the bindings as some
+system files are needed for, e.g., MPI. The recommended minimal bindings are:
+
+```
+-B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1
+```
+
+and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`.
+You can get access to your files on LUMI in the regular location by also using the bindings
+
+```
+-B /pfs,/scratch,/projappl,/project,/flash,/appl
+```
+
+Note that the list recommended bindings may change after a system update or between 
+different containers. We do try to keep the EasyBuild recipes for the modules 
+up-to-date though to reflect those changes.
+

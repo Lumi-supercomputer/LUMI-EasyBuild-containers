@@ -8,7 +8,7 @@ two possible ways:
 -   [Through modules and wrapper scripts generated via EasyBuild](index.md#module-and-wrapper-scripts)
 
 -   [Directly, with you taking care of all bindings and all necessary environment
-    variables.](index.md#alternative-direct-access)
+    variables.](index.md#alternative-direct-access-without-the-easybuild-generated-pytorch-module)
 
     These instructions will likely also work for the 
     [containers built on top of the ROCm containers with cotainr](../../r/rocm/index.md#using-the-images-as-base-image-for-cotainr).
@@ -38,7 +38,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
 
     If you prefer to use the centrally provided container, you can remove your copy 
     after loading of the module with `rm $SIF` followed by reloading the module. This
-    is however at your own risk. 
+    is at your own risk however. 
 
 2.  It will create a module file. 
     When loading the module, a number of environment variables will
@@ -48,7 +48,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
     -   `SIF` and `SIFPYTORCH` both contain the name and full path of the singularity
         container file.
         
-    -   `SINGULARITY_BINDPATH` will mount all necessary directories from the system,
+    -   `SINGULARITY_BIND` will mount all necessary directories from the system,
         including everything that is needed to access the project, scratch and flash
         file systems.
         
@@ -112,6 +112,18 @@ environment `pytorch`. Inside the container, the virtual environment is availabl
 `$CONTAINERROOT/user-software/venv` (if this directory has not been removed after creating
 a SquashFS file from it for better file system performance). You can also use the 
 `/user-software` subdirectory in the container to install other software through other methods.
+In these containers it is also very easy to check which Python packages are installed 
+with
+
+```
+singularity exec $SIF pip list
+```
+
+or if the `start-shell` script is available (which is the case for most of these containers),
+
+```
+start-shell -c 'pip list'
+```
 
 
 ## Examples with the wrapper scripts
@@ -152,7 +164,7 @@ module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240209
 singularity exec $SIF bash -c '$WITH_CONDA ; pip list'
 ```
 
-Notice the use of single quotes as with double quotes `$WITH_CONDA` would be expanded
+Notice the use of single quotes as with double quotes, `$WITH_CONDA` would be expanded
 by the shell before executing the singularity command, and at that time `WITH_CONDA` is
 not yet defined. To use the container it also doesn't matter which version of the 
 LUMI module is loaded, and in fact, loading CrayEnv would work as well.
@@ -164,7 +176,7 @@ For the containers from version 20240315 on, the `$WITH_CONDA` is no longer need
 In an interactive session, you still need to load the module and go into the container:
 
 ```
-module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 singularity shell $SIF
 ```
 
@@ -177,7 +189,7 @@ pip list
 Without an interactive session in the container, all that is now needed is
 
 ```
-module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 singularity exec $SIF pip list
 ```
 
@@ -194,8 +206,8 @@ arguments to the `python` command. E.g., the example below will import the `torc
 package in Python and then show the number of GPUs available to it:
 
 ```
-salloc -N1 -pstandard-g -t 30:00
-module load LUMI PyTorch/2.1.0-rocm-5.6.1-python-3.10-singularity-20240209
+salloc -N1 -pstandard-g -t 10:00
+module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240209
 srun -N1 -n1 --gpus 8 singularity exec $SIF conda-python-simple \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 exit
@@ -219,8 +231,8 @@ for compatibility with job scripts developed before those containers became avai
 The following commands now work just as well:
 
 ```
-salloc -N1 -pstandard-g -t 30:00
-module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+salloc -N1 -pstandard-g -t 10:00
+module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 srun -N1 -n1 --gpus 8 singularity exec $SIF python \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 exit
@@ -246,7 +258,17 @@ Together these scripts make job scripts a lot easier.
 An example job script using the [mnist example](https://github.com/Lumi-supercomputer/lumi-reframe-tests/tree/main/checks/containers/ML_containers/src/pytorch/mnist)
 (itself based on an example by Google) is:
 
-1.  The mnist example needs some data files. We can get them in the job script (as we did before)
+<!--
+Old locations of the data:
+
+wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
+wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
+wget http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz
+wget http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
+
+-->
+
+1.  The mnist example needs some data files. We can get them in the job script
     but also simply install them now, avoiding repeated downloads when using the script multiple times
     (in the example with wrappers it was in the job script to have a one file example).
     First create a directory for your work on this example and go into that directory.
@@ -256,9 +278,23 @@ An example job script using the [mnist example](https://github.com/Lumi-supercom
 
     ``` bash
     mkdir mnist ; pushd mnist
-    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/main/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/98327968ff300ed0181d5d14b5dd49cdf1d7b743/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    sed -i -e 's|download=True|download=False|' mnist_DDP.py
     mkdir -p model ; cd model
-    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/main/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/98327968ff300ed0181d5d14b5dd49cdf1d7b743/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    cd ..
+    
+    mkdir -p data/MNIST/raw
+    pushd data/MNIST/raw
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/train-images-idx3-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/train-labels-idx1-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/t10k-images-idx3-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/t10k-labels-idx1-ubyte.gz    
+    gunzip -k *.gz
+    popd
+    
+    for number in $(seq 0 31); do ln -s data data$number ; done
+    
     popd
     ```
 
@@ -279,12 +315,12 @@ An example job script using the [mnist example](https://github.com/Lumi-supercom
     #SBATCH --account=project_<your_project_id>
 
     module load LUMI  # Which version doesn't matter, it is only to get the container.
-    module load PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+    module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 
     # Optional: Inject the environment variables for NCCL debugging into the container.   
     # This will produce a lot of debug output!     
-    export SINGULARITYENV_NCCL_DEBUG=INFO
-    export SINGULARITYENV_NCCL_DEBUG_SUBSYS=INIT,COLL
+    export NCCL_DEBUG=INFO
+    export NCCL_DEBUG_SUBSYS=INIT,COLL
 
     c=fe
     MYMASKS="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
@@ -305,8 +341,10 @@ An example job script using the [mnist example](https://github.com/Lumi-supercom
     gets the cores most closely to GPU 0, etc. 
 
     The jobscript also shows how environment variables to enable debugging of the RCCL communication can be
-    set outside the container. Basically, if the name of an environment variable is prepended with `SINGULARITYENV_`,
-    it will be injected in the container by the `singularity` command. 
+    set outside the container. This is really as if they are set in the container.
+    
+    If those variables would in some way already be defined in the container (which is not the case), you could still
+    overwrite the value set in the container by prepending the name of the variable with `SINGULARITYENV_`. 
 
 ??? Note "Inside the `conda-python-distributed` script (if you need to modify things)"
 
@@ -415,7 +453,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb PyTorch-2.2.0-rocm-5.6.1-python-3.10-singularity-20240315.eb
+eb PyTorch-2.3.1-rocm-6.0.3-python-3.12-singularity-20240923.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
@@ -444,12 +482,12 @@ so the general principles really need to be discussed in the main LUMI docs.
 ### Manual procedure
 
 Let's demonstrate how the module can be extended by using `pip` to install packages in the virtual
-environment. We'll demonstrate using the `PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315`
+environment. We'll demonstrate using the `PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923`
 module where we assume that you have already installed this module:
 
 ``` bash
 module load CrayEnv
-module load PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 ```
 
 Let's check a directory outside the container:
@@ -522,18 +560,15 @@ successfully loaded.
 Now execute 
 
 ``` bash
-ls /user-software/venv/pytorch/lib/python3.10/site-packages/
+ls /user-software/venv/pytorch/lib/python3.12/site-packages/
 ```
 
 and you'll get output similar to
 
 ```
-_distutils_hack			              pkg_resources
-distutils-precedence.pth	          setuptools
-lightning_utilities		              setuptools-65.5.0.dist-info
-lightning_utilities-0.11.1.dist-info  torchmetrics
-pip				                      torchmetrics-1.3.2.dist-info
-pip-23.0.1.dist-info
+lightning_utilities		                pip-24.0.dist-info
+lightning_utilities-0.11.9.dist-info  torchmetrics
+pip				                            torchmetrics-1.6.1.dist-info
 ```
 
 which confirms that the `torchmetrics` package is indeed installed in the virtual environment.
@@ -542,7 +577,7 @@ Let's leave the container (by executing the `exit` command) and check again what
 the container:
 
 ``` bash
-ls $CONTAINERROOT/user-software/venv/pytorch/lib/python3.10/site-packages/
+ls $CONTAINERROOT/user-software/venv/pytorch/lib/python3.12/site-packages/
 ```
 
 and we get the same output as with the previous `ls` command. I.e., the installation file of the package
@@ -555,7 +590,7 @@ lfs find $CONTAINERROOT/user-software | wc -l
 ```
 
 where `lfs find` is a version of the `find` command with some restrictions, but one that is a lot more
-friendly to the Lustre metadata servers. The output suggests that there are over 2300 files and directories
+friendly to the Lustre metadata servers. The output suggests that there are over 1950 files and directories
 in the `user-software` subdirectory. The Lustre filesystem doesn't like working with lots of small files
 and Python can sometimes open a lot of those files in a short amount of time. 
 
@@ -575,7 +610,7 @@ The second command outputs something along the lines of
 ```
 bin
 easybuild
-lumi-pytorch-rocm-5.6.1-python-3.10-pytorch-v2.2.0-dockerhash-7392c9d4dcf7.sif
+lumi-pytorch-rocm-6.0.3-python-3.12-pytorch-v2.3.1-dockerhash-2c1c14cafd28.sif
 runscripts
 user-software
 user-software.squashfs
@@ -594,7 +629,7 @@ as it can be reconstructed (except for the file dates) from the SquashFS file us
 Reload the module to let the changes take effect and go again in the container:
 
 ``` bash
-module load PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 singularity shell $SIF
 ```
 
@@ -616,16 +651,16 @@ Defaulting to user installation because normal site-packages is not writeable
 Try, e.g.,
 
 ``` bash
-pip install lightning-utilities
+pip install lightning==2.2.5
 ```
 
-and notice that the package (likely) landed in `~/.local/lib/python3.10/site-packages`:
+and notice that the package (likely) landed in `~/.local/lib/python3.12/site-packages`:
 
 ```
-ls ~/.local/lib/python3.10/site-packages
+ls ~/.local/lib/python3.12/site-packages
 ```
 
-will among other subdirectories contain the subdirectory `pytorch_lightning` and this is 
+will among other subdirectories contain the subdirectory `lightning` and this is 
 not entirely what we want.
 
 Yet it is still possible to install additional packages by first unsquashing the `user-software.squashfs` file
@@ -657,7 +692,7 @@ as that may slow down EasyBuild considerably.**
 
 In some cases it is possible to adapt the EasyConfig file to also install the additional Python packages
 that are not yet included in the container. This is demonstrated in the 
-`PyTorch-2.2.0-rocm-5.6.1-python-3.10-singularity-exampleVenv-20240315.eb` example EasyConfig file
+`PyTorch-2.3.1-rocm-6.0.3-python-3.12-singularity-exampleVenv-20240923.eb` example EasyConfig file
 which is available on LUMI. First load EasyBuild to install containers, e.g.,
 
 ``` bash
@@ -667,7 +702,7 @@ module load LUMI partition/container EasyBuild-user
 and then we can use EasyBuild to copy the recipe to our current directory:
 
 ``` bash
-eb --copy-ec PyTorch-2.2.0-rocm-5.6.1-python-3.10-singularity-exampleVenv-20240315.eb .
+eb --copy-ec PyTorch-2.3.1-rocm-6.0.3-python-3.12-singularity-exampleVenv-20240923.eb .
 ```
 
 You can now inspect the `.eb` file with your favourite editor. This file basically defines a lot
@@ -708,7 +743,7 @@ subdirectory. These four lines are generic as the package list is defined via th
 `local_pip_requirements` environment variable.
 
 
-## Alternative: Direct access
+## Alternative: Direct access (without the EasyBuild-generated PyTorch module)
 
 ### Getting the container image
 
@@ -733,12 +768,27 @@ When using the containers without the modules, you will have to take care of the
 system files are needed for, e.g., RCCL. The recommended mininmal bindings are:
 
 ```
--B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4
+-B /var/spool/slurmd,/opt/cray/,/usr/lib64/libcxi.so.1
 ```
 
-and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`.
+and the bindings you need to access the files you want to use from `/scratch`, `/flash` and/or `/project`: 
+
+```
+-B /pfs,/scratch,/projappl,/project,/flash,/appl
+```
 
 Note that the list recommended bindings may change after a system update.
+
+If you want to quickly check what Python packages are available in the containers in those directories,
+you don't need all the bind points and a quick
+
+```
+singularity exec <path-to-sif-file> bash -c '$WITH_CONDA ; pip list'
+```
+
+will do. Note the single quotes though as we don't want the `$WITH_CONDA` to be expanded outside 
+the container (and of course replace `<path-to-sif-file>` with the actual path to and name of 
+the SIF file you want to check.)
 
 Alternatively, you can also build your [own container image on top of the
 ROCm containers that we provide with cotainr](../../r/rocm/index.md#using-the-images-as-base-image-for-cotainr).
@@ -754,7 +804,10 @@ If you use PyTorch containers from other sources, take into account that
     installed in a way that the libfabric library on LUMI is used.
 
 -   Similarly the `mpi4py` package (if included) may not be compatible with the interconnect
-    on LUMI, also resulting in poor performance or failure. You may want to make sure that an
+    on LUMI, also resulting in poor performance or failure. For AI packages, things will
+    often still be OK as MPI is often only used during the initialisation after which 
+    communication is done through RCCL. 
+    You may want to make sure that an
     MPI implementation that is ABI-compatible with Cray MPICH is used so that you can then try
     to overwrite it with Cray MPICH.
 
@@ -763,6 +816,7 @@ but we are not the PyTorch support team and have limited resources. In no way is
 the LUST to support any possible container from any possible source. See also our page
 ["Software Install Policy](https://docs.lumi-supercomputer.eu/software/policy/)
 in the main LUMI documentation.
+
 
 ### Example: Distributed learning without the wrappers
 
@@ -799,6 +853,7 @@ The text is written in such a way though that it can be read without first readi
 
         print(first_node)
     ```
+
 2.  Next we need another script that will run in the container to set up a number of
     environment variables that are needed to run PyTorch successfully on LUMI and at
     the end, call Python to run our example. Let's store the following script as
@@ -847,7 +902,7 @@ The text is written in such a way though that it can be read without first readi
     # The usual PyTorch initialisations (also needed on NVIDIA)
     # Note that since we fix the port ID it is not possible to run, e.g., two
     # instances via this script using half a node each.
-    export MASTER_ADDR=$(python get-master.py "$SLURM_NODELIST")
+    export MASTER_ADDR=$(python /workdir/get-master.py "$SLURM_NODELIST")
     export MASTER_PORT=29500
     export WORLD_SIZE=$SLURM_NPROCS
     export RANK=$SLURM_PROCID
@@ -938,9 +993,23 @@ The text is written in such a way though that it can be read without first readi
 
     ``` bash
     mkdir mnist ; pushd mnist
-    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/main/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/98327968ff300ed0181d5d14b5dd49cdf1d7b743/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    sed -i -e 's|download=True|download=False|' mnist_DDP.py
     mkdir -p model ; cd model
-    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/main/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/98327968ff300ed0181d5d14b5dd49cdf1d7b743/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    cd ..
+    
+    mkdir -p data/MNIST/raw
+    pushd data/MNIST/raw
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/train-images-idx3-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/train-labels-idx1-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/t10k-images-idx3-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/t10k-labels-idx1-ubyte.gz    
+    gunzip -k *.gz
+    popd
+    
+    for number in $(seq 0 31); do ln -s data data$number ; done
+    
     popd
     ```
 
@@ -960,7 +1029,7 @@ The text is written in such a way though that it can be read without first readi
     #SBATCH --time=00:10:00
     #SBATCH --account=project_<your_project_id>
 
-    CONTAINER=your-container-image.sif
+    CONTAINER=/appl/local/containers/easybuild-sif-images/lumi-pytorch-rocm-6.0.3-python-3.12-pytorch-v2.3.1-dockerhash-2c1c14cafd28.sif
 
     c=fe
     MYMASKS="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
@@ -970,14 +1039,15 @@ The text is written in such a way though that it can be read without first readi
         -B /var/spool/slurmd \
         -B /opt/cray \
         -B /usr/lib64/libcxi.so.1 \
-        -B /usr/lib64/libjansson.so.4 \
         -B $PWD:/workdir \
         $CONTAINER /workdir/run-pytorch.sh
     ```
+    
+    (if you get mpi4py-related error messages in some of the older containers you may have to add `-B /usr/lib64/libjansson.so.4` also.)
 
 
-## Known restrictions and problems
+## Links
 
--   `torchrun` cannot be used on LUMI (and many other HPC clusters) as it uses a mechanism
-    to start tasks that does not go through the resource manager of the cluster and hence
-    if enabled could enable users to steal resources from other users on shared nodes.
+-   [Latest edition of the "Moving your AI training jobs to LUMI" workshop](https://lumi-supercomputer.github.io/AI-latest)
+
+    

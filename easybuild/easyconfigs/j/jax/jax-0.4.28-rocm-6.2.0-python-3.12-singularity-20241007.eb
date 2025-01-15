@@ -1,15 +1,21 @@
 # Developed by Kurt Lust for LUMI
-#DOC Contains JAX 0.4.13 with NumPy 1.26.3 and SciPy 1.12.0.
+#DOC Contains JAX 0.4.28 with NumPy 1.26.4, SciPy 1.14.1 and pandas 2.2.2.
 easyblock = 'MakeCp'
 
-local_NumPy_version = '1.26.3'
-local_SciPy_version = '1.12.0'
+local_jax_version    = '0.4.28'
+local_NumPy_version  = '1.26.4'
+local_SciPy_version  = '1.14.1'
+local_pandas_version = '2.2.2'
+local_rocm_version   = '6.2.0'
+local_python_version = '3.12'
+local_date           = '20241007'
+local_hash           = 'a886651bba73'
 
 name =          'jax'
-version =       '0.4.13'
-versionsuffix = '-rocm-5.6.1-python-3.10-singularity-20240207'
+version =       local_jax_version
+versionsuffix = f'-rocm-{local_rocm_version}-python-{local_python_version}-singularity-{local_date}'
 
-local_sif =    'lumi-jax-rocm-5.6.1-python-3.10-jax-0.4.13-dockerhash-825cf0044cce.sif'
+local_sif =    f'lumi-jax-rocm-{local_rocm_version}-python-{local_python_version}-jax-{local_jax_version}-dockerhash-{local_hash}.sif'
 #local_docker = 'lumi-pytorch-rocm-5.6.1-python-3.10-pytorch-v2.1.0.docker'
 
 homepage = 'https://jax.readthedocs.io/en/latest/'
@@ -20,7 +26,8 @@ whatis = [
 ]
 
 description = f"""
-This module provides a container with JAX %(version)s with NumPy {local_NumPy_version} and SciPy {local_SciPy_version}.
+This module provides a container with JAX %(version)s with NumPy {local_NumPy_version}, SciPy {local_SciPy_version}
+and pandas {local_pandas_version}.
 
 The module defines a number of environment variables:
 *   SIF and SIFJAX: The full path and name of the Singularity SIF file 
@@ -118,7 +125,7 @@ modextravars = {
     #'SIFJAX':          '%(installdir)s/' + local_sif,
     'RUNSCRIPTS':       '%(installdir)s/runscripts',
     'RUNSCRIPTSJAX':    '%(installdir)s/runscripts',
-    'SINGULARITY_BIND': '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' +
+    'SINGULARITY_BIND': '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,' +
                         '%(installdir)s/runscripts:/runscripts,' + 
                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
 }

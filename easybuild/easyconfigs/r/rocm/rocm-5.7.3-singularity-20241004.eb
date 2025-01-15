@@ -1,11 +1,15 @@
 easyblock = 'MakeCp'
 
-name =          'rocm'
-version =       '5.6.1'
-versionsuffix = '-singularity-20240124'
+local_version = '5.7.3'
+local_date =    '20241004'
+local_hash =    '2e7a2382d77e'
 
-local_sif=   'lumi-rocm-rocm-5.6.1-dockerhash-62dbd19f0f95.sif'
-#local_docker='lumi-rocm-rocm-5.6.1.docker'
+name =          'rocm'
+version =       local_version
+versionsuffix = f'-singularity-{local_date}'
+
+local_sif=   f'lumi-rocm-rocm-{local_version}-dockerhash-{local_hash}.sif'
+#local_docker=f'lumi-rocm-rocm-{local_version}.docker'
 
 homepage = 'https://docs.amd.com/'
 

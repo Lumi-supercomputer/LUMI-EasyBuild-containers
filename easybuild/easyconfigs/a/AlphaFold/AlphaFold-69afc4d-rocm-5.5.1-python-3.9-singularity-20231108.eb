@@ -19,7 +19,7 @@ This module provides a container with AlphaFold github commit %(version)s.
 The module defines a number of environment variables:
 *   SIF and SIFALPHAFOLD: The full path and name of the Singularity SIF file 
     to use with singularity exec etc.
-*   SINGULAIRTY_BINDPATH: Mounts the necessary directories from the system,
+*   SINGULARITY_BIND: Mounts the necessary directories from the system,
     including /users, /project, /scratch and /flash so that you should be
     able to use your regular directories in the container.
 *   RUNSCRIPTS and RUNSCRIPTSALPHAFOLD: The directory with some sample
