@@ -258,6 +258,16 @@ Together these scripts make job scripts a lot easier.
 An example job script using the [mnist example](https://github.com/Lumi-supercomputer/lumi-reframe-tests/tree/main/checks/containers/ML_containers/src/pytorch/mnist)
 (itself based on an example by Google) is:
 
+<!--
+Old locations of the data:
+
+wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
+wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
+wget http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz
+wget http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
+
+-->
+
 1.  The mnist example needs some data files. We can get them in the job script
     but also simply install them now, avoiding repeated downloads when using the script multiple times
     (in the example with wrappers it was in the job script to have a one file example).
@@ -268,9 +278,23 @@ An example job script using the [mnist example](https://github.com/Lumi-supercom
 
     ``` bash
     mkdir mnist ; pushd mnist
-    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/main/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/98327968ff300ed0181d5d14b5dd49cdf1d7b743/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    sed -i -e 's|download=True|download=False|' mnist_DDP.py
     mkdir -p model ; cd model
-    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/main/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/98327968ff300ed0181d5d14b5dd49cdf1d7b743/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    cd ..
+    
+    mkdir -p data/MNIST/raw
+    pushd data/MNIST/raw
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/train-images-idx3-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/train-labels-idx1-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/t10k-images-idx3-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/t10k-labels-idx1-ubyte.gz    
+    gunzip -k *.gz
+    popd
+    
+    for number in $(seq 0 31); do ln -s data data$number ; done
+    
     popd
     ```
 
@@ -291,12 +315,12 @@ An example job script using the [mnist example](https://github.com/Lumi-supercom
     #SBATCH --account=project_<your_project_id>
 
     module load LUMI  # Which version doesn't matter, it is only to get the container.
-    module load PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240315
+    module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 
     # Optional: Inject the environment variables for NCCL debugging into the container.   
     # This will produce a lot of debug output!     
-    export SINGULARITYENV_NCCL_DEBUG=INFO
-    export SINGULARITYENV_NCCL_DEBUG_SUBSYS=INIT,COLL
+    export NCCL_DEBUG=INFO
+    export NCCL_DEBUG_SUBSYS=INIT,COLL
 
     c=fe
     MYMASKS="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
@@ -317,8 +341,10 @@ An example job script using the [mnist example](https://github.com/Lumi-supercom
     gets the cores most closely to GPU 0, etc. 
 
     The jobscript also shows how environment variables to enable debugging of the RCCL communication can be
-    set outside the container. Basically, if the name of an environment variable is prepended with `SINGULARITYENV_`,
-    it will be injected in the container by the `singularity` command. 
+    set outside the container. This is really as if they are set in the container.
+    
+    If those variables would in some way already be defined in the container (which is not the case), you could still
+    overwrite the value set in the container by prepending the name of the variable with `SINGULARITYENV_`. 
 
 ??? Note "Inside the `conda-python-distributed` script (if you need to modify things)"
 
@@ -540,9 +566,9 @@ ls /user-software/venv/pytorch/lib/python3.12/site-packages/
 and you'll get output similar to
 
 ```
-lightning_utilities		      pip-24.0.dist-info
+lightning_utilities		                pip-24.0.dist-info
 lightning_utilities-0.11.9.dist-info  torchmetrics
-pip				      torchmetrics-1.6.1.dist-info
+pip				                            torchmetrics-1.6.1.dist-info
 ```
 
 which confirms that the `torchmetrics` package is indeed installed in the virtual environment.
@@ -827,6 +853,7 @@ The text is written in such a way though that it can be read without first readi
 
         print(first_node)
     ```
+
 2.  Next we need another script that will run in the container to set up a number of
     environment variables that are needed to run PyTorch successfully on LUMI and at
     the end, call Python to run our example. Let's store the following script as
@@ -875,7 +902,7 @@ The text is written in such a way though that it can be read without first readi
     # The usual PyTorch initialisations (also needed on NVIDIA)
     # Note that since we fix the port ID it is not possible to run, e.g., two
     # instances via this script using half a node each.
-    export MASTER_ADDR=$(python get-master.py "$SLURM_NODELIST")
+    export MASTER_ADDR=$(python /workdir/get-master.py "$SLURM_NODELIST")
     export MASTER_PORT=29500
     export WORLD_SIZE=$SLURM_NPROCS
     export RANK=$SLURM_PROCID
@@ -966,9 +993,23 @@ The text is written in such a way though that it can be read without first readi
 
     ``` bash
     mkdir mnist ; pushd mnist
-    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/main/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    wget https://raw.githubusercontent.com/Lumi-supercomputer/lumi-reframe-tests/98327968ff300ed0181d5d14b5dd49cdf1d7b743/checks/containers/ML_containers/src/pytorch/mnist/mnist_DDP.py
+    sed -i -e 's|download=True|download=False|' mnist_DDP.py
     mkdir -p model ; cd model
-    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/main/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    wget https://github.com/Lumi-supercomputer/lumi-reframe-tests/raw/98327968ff300ed0181d5d14b5dd49cdf1d7b743/checks/containers/ML_containers/src/pytorch/mnist/model/model_gpu.dat
+    cd ..
+    
+    mkdir -p data/MNIST/raw
+    pushd data/MNIST/raw
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/train-images-idx3-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/train-labels-idx1-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/t10k-images-idx3-ubyte.gz
+    wget https://github.com/golbin/TensorFlow-MNIST/raw/refs/heads/master/mnist/data/t10k-labels-idx1-ubyte.gz    
+    gunzip -k *.gz
+    popd
+    
+    for number in $(seq 0 31); do ln -s data data$number ; done
+    
     popd
     ```
 
@@ -988,7 +1029,7 @@ The text is written in such a way though that it can be read without first readi
     #SBATCH --time=00:10:00
     #SBATCH --account=project_<your_project_id>
 
-    CONTAINER=your-container-image.sif
+    CONTAINER=/appl/local/containers/easybuild-sif-images/lumi-pytorch-rocm-6.0.3-python-3.12-pytorch-v2.3.1-dockerhash-2c1c14cafd28.sif
 
     c=fe
     MYMASKS="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
