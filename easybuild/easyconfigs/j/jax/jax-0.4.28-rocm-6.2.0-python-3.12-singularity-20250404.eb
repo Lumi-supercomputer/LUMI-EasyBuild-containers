@@ -1,0 +1,142 @@
+# Developed by Kurt Lust for LUMI
+#DOC Contains JAX 0.4.28 with NumPy 2.2.2, SciPy 1.15.1 and pandas 2.2.3.
+easyblock = 'MakeCp'
+
+local_jax_version    = '0.4.28'
+local_NumPy_version  = '2.2.2'
+local_SciPy_version  = '1.15.2'
+local_pandas_version = '2.2.3'
+local_rocm_version   = '6.2.0'
+local_python_version = '3.12'
+local_date           = '20250404'
+local_hash           = '1441a4bce06f'
+
+name =          'jax'
+version =       local_jax_version
+versionsuffix = f'-rocm-{local_rocm_version}-python-{local_python_version}-singularity-{local_date}'
+
+local_sif =    f'lumi-jax-rocm-{local_rocm_version}-python-{local_python_version}-jax-{local_jax_version}-dockerhash-{local_hash}.sif'
+#local_docker = 'lumi-pytorch-rocm-5.6.1-python-3.10-pytorch-v2.1.0.docker'
+
+homepage = 'https://jax.readthedocs.io/en/latest/'
+
+whatis = [
+    'Description: JAX is Autograd and XLA, brought together for high-performance numerical computing.',
+    'Keywords: JAX'
+]
+
+description = f"""
+This module provides a container with JAX %(version)s with NumPy {local_NumPy_version}, SciPy {local_SciPy_version}
+and pandas {local_pandas_version}.
+
+The module defines a number of environment variables:
+*   SIF and SIFJAX: The full path and name of the Singularity SIF file 
+    to use with singularity exec etc.
+*   SINGULARITY_BIND: Mounts the necessary directories from the system,
+    including /users, /project, /scratch and /flash so that you should be
+    able to use your regular directories in the container.
+*   RUNSCRIPTS and RUNSCRIPTSJAX: The directory with some sample
+    runscripts.
+    
+Note that this container uses a Conda environment (jax) internally. When in
+the container, the command to activate the container is contained in the
+environment variable WITH_CONDA.
+"""
+
+docurls = [
+    'JAX online docs: https://jax.readthedocs.io/en/latest/'    
+]
+
+toolchain = SYSTEM
+
+sources = [
+    {
+        'filename':    local_sif,
+        'extract_cmd': '/bin/cp -L %s .'
+    },
+]
+
+skipsteps = ['build']
+
+files_to_copy = [
+    ([local_sif], '.'),
+]
+
+local_bin_start_shell="""
+#!/bin/bash -e
+
+# Run application
+if [[ -f "/.singularity.d/Singularity" ]] 
+then
+    # In a singularity container, just in case a user would add this to the path.
+    if [ "\$#" -eq 0 ]
+    then
+        \$WITH_CONDA ; exec bash
+    else
+        \$WITH_CONDA ; exec bash "\$@"
+    fi
+else
+    # Not yet in the container
+    if [ "\$#" -eq 0 ]
+    then
+        singularity exec \$SIFJAX bash -c '\\$WITH_CONDA ; exec bash'
+    else
+        singularity exec \$SIFJAX bash "\$@"
+    fi
+fi
+
+"""
+
+local_runscript_python_simple="""
+#!/bin/bash -e
+
+# Start conda environment inside the container
+\$WITH_CONDA
+
+# Run application
+python "\$@"
+
+"""
+
+postinstallcmds = [
+    'mkdir -p %(installdir)s/bin',
+    f'cat >%(installdir)s/bin/start-shell <<EOF {local_bin_start_shell}EOF',
+    'chmod a+x %(installdir)s/bin/start-shell',
+    'mkdir -p %(installdir)s/runscripts',
+    f'cat >%(installdir)s/runscripts/conda-python-simple <<EOF {local_runscript_python_simple}EOF',
+    'chmod a+x %(installdir)s/runscripts/conda-python-simple',
+]
+
+sanity_check_paths = {
+    # We deliberately don't check for local_sif as the user is allowed to remove that file
+    # but may still want to regenerate the module which would then fail in the sanity check.
+    #'files': [f'share/docker-defs/{local_docker}'],
+    'files': [],
+    'dirs':  ['runscripts'],
+}
+
+sanity_check_commands = [
+    """start-shell -c '/runscripts/conda-python-simple -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"' """   
+]
+
+modextravars = {
+    # SIF variables currently set by a function via modluafooter.
+    #'SIF':             '%(installdir)s/' + local_sif,
+    #'SIFJAX':          '%(installdir)s/' + local_sif,
+    'RUNSCRIPTS':       '%(installdir)s/runscripts',
+    'RUNSCRIPTSJAX':    '%(installdir)s/runscripts',
+    'SINGULARITY_BIND': '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,' +
+                        '%(installdir)s/runscripts:/runscripts,' + 
+                        '/pfs,/scratch,/projappl,/project,/flash,/appl'
+}
+
+modluafooter = f"""
+-- Call a routine to set the various environment variables.
+create_container_vars( '{local_sif}', '%(name)s', '%(installdir)s' )
+"""
+
+moduleclass = 'devel'
+
+
+
+
