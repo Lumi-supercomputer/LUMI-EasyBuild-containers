@@ -192,9 +192,10 @@ In an interactive session, you still need to load the module and go into the con
 
 ```
 module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
-singularity shell $SIF
+start-shell
 ```
 
+(where we use the wrapper script `start-shell`, equivalent to `singularity shell $SIF`)
 but once in the container, at the `Singularity>` prompt, all that is needed is
 
 ```
@@ -209,6 +210,20 @@ singularity exec $SIF pip list
 ```
 
 as the `pip` command is already in the search path.
+
+
+#### Containers from PyTorch 2.6 on
+
+Listing packages is now even simpler. It is not even needed to start a singularity shell 
+or explicitly call `singularity exec`, as
+
+```
+pip list
+```
+
+can be executed directly from a system bash shell as long as the PyTorch module is loaded
+thanks to a wrapper script that takes care of starting `pip` in the container.
+However, the above approach still works.
 
 
 ### Executing Python code in the container (single task)
@@ -249,6 +264,20 @@ The following commands now work just as well:
 salloc -N1 -pstandard-g -t 10:00
 module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
 srun -N1 -n1 --gpus 8 singularity exec $SIF python \
+    -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
+exit
+```
+
+
+#### Containers for PyTorch 2.6.0 and later
+
+For these containers, one can still use the above approach, but another option is to use
+the `python` wrapper script provided by the container module, which reduces work even further:
+
+```
+salloc -N1 -pstandard-g -t 10:00
+module load LUMI PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
+srun -N1 -n1 --gpus 8 python \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 exit
 ```
@@ -330,7 +359,7 @@ wget http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
     #SBATCH --account=project_<your_project_id>
 
     module load LUMI  # Which version doesn't matter, it is only to get the container.
-    module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
+    module load PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
 
     # Optional: Inject the environment variables for NCCL debugging into the container.   
     # This will produce a lot of debug output!     
@@ -468,7 +497,7 @@ and use the dummy partition `container`, e.g.:
 
 ```
 module load LUMI partition/container EasyBuild-user
-eb PyTorch-2.3.1-rocm-6.0.3-python-3.12-singularity-20240923.eb
+eb PyTorch-2.6.0-rocm-6.2.4-python-3.12-singularity-20250404.eb
 ```
 
 To use the container after installation, the `EasyBuild-user` module is not needed nor
@@ -497,12 +526,12 @@ so the general principles really need to be discussed in the main LUMI docs.
 ### Manual procedure
 
 Let's demonstrate how the module can be extended by using `pip` to install packages in the virtual
-environment. We'll demonstrate using the `PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923`
+environment. We'll demonstrate using the `PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404`
 module where we assume that you have already installed this module:
 
 ``` bash
 module load CrayEnv
-module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
+module load PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
 ```
 
 Let's check a directory outside the container:
@@ -536,7 +565,7 @@ ls -l /user-software/venv/pytorch
 ```
 
 and notice that we have the same output as with the previous `ls` command that we executed outside
-the container. So the `RCONTAINERROOT/user-software` subdirectory is available in the container
+the container. So the `$CONTAINERROOT/user-software` subdirectory is available in the container
 as `/user-software`.
 
 Executing
@@ -557,22 +586,24 @@ also shows that the virtual environment is already activated and that we get the
 from the virtual environment and not the system `python3` (there is a `python3` executable in `/usr/bin`)
 or the Conda `python` in `/opt/miniconda3/envs/pytorch/bin`.
 
-Let us install the `torchmetrics` package using `pip`:
+Let us install the `torch-hd` package using `pip`. For PyTorch versions prior to 2.6.0, you have to
+do this in a singularity shell as started above, but from PyTorch 2.6.0 on, additional wrapper scripts
+are provided so that you can also install additional packages with `pip` from a shell on the system.
 
 ``` bash
-pip install torchmetrics
+pip install torch-hd
 ```
 
 To check if the package is present and can be loaded, try
 
 ``` bash
-python -c 'import torchmetrics ; print( torchmetrics.__version__ )'
+python -c 'import torchhd ; print( torchhd.__version__ )'
 ```
 
-and notice that it does print the version number of `torchmetrics`, so the package was
+and notice that it does print the version number of `torch-hd`, so the package was
 successfully loaded.
 
-Now execute 
+If you are in the container, you can now execute 
 
 ``` bash
 ls /user-software/venv/pytorch/lib/python3.12/site-packages/
@@ -581,15 +612,13 @@ ls /user-software/venv/pytorch/lib/python3.12/site-packages/
 and you'll get output similar to
 
 ```
-lightning_utilities		                pip-24.0.dist-info
-lightning_utilities-0.11.9.dist-info  torchmetrics
-pip				                            torchmetrics-1.6.1.dist-info
+pip		              torchhd
+pip-24.3.1.dist-info  torch_hd-5.7.1.dist-info
 ```
 
-which confirms that the `torchmetrics` package is indeed installed in the virtual environment.
+which confirms that the `torch-hd` package is indeed installed in the virtual environment.
 
-Let's leave the container (by executing the `exit` command) and check again what has happened outside
-the container:
+In a shell outside the container, one can check:
 
 ``` bash
 ls $CONTAINERROOT/user-software/venv/pytorch/lib/python3.12/site-packages/
@@ -598,14 +627,14 @@ ls $CONTAINERROOT/user-software/venv/pytorch/lib/python3.12/site-packages/
 and we get the same output as with the previous `ls` command. I.e., the installation file of the package
 is indeed saved outside the container.
 
-Now there is one remaining problem. Try
+Now there is one remaining problem. Try (outside the container)
 
 ``` bash
 lfs find $CONTAINERROOT/user-software | wc -l
 ```
 
 where `lfs find` is a version of the `find` command with some restrictions, but one that is a lot more
-friendly to the Lustre metadata servers. The output suggests that there are over 1950 files and directories
+friendly to the Lustre metadata servers. The output suggests that there are over 1300 files and directories
 in the `user-software` subdirectory. The Lustre filesystem doesn't like working with lots of small files
 and Python can sometimes open a lot of those files in a short amount of time. 
 
@@ -625,7 +654,7 @@ The second command outputs something along the lines of
 ```
 bin
 easybuild
-lumi-pytorch-rocm-6.0.3-python-3.12-pytorch-v2.3.1-dockerhash-2c1c14cafd28.sif
+lumi-pytorch-rocm-6.2.4-python-3.12-pytorch-v2.6.0-dockerhash-36e16fb5b67b.sif
 runscripts
 user-software
 user-software.squashfs
@@ -644,7 +673,7 @@ as it can be reconstructed (except for the file dates) from the SquashFS file us
 Reload the module to let the changes take effect and go again in the container:
 
 ``` bash
-module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
+module load PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
 singularity shell $SIF
 ```
 
@@ -666,7 +695,7 @@ Defaulting to user installation because normal site-packages is not writeable
 Try, e.g.,
 
 ``` bash
-pip install lightning==2.2.5
+pip install torch-pme==0.3.0
 ```
 
 and notice that the package (likely) landed in `~/.local/lib/python3.12/site-packages`:
@@ -756,6 +785,47 @@ so we need to do all bindings by hand and use variables that are known to EasyBu
 The third line then creates the `user-software.squashfs` file and the last line deletes the `user-software`
 subdirectory. These four lines are generic as the package list is defined via the 
 `local_pip_requirements` environment variable.
+
+
+### Installing packages that need to be compiled
+
+Some packages need to be compiled on the system, even when installing via `pip`. 
+
+The problem one may run into is that it may seem that there is no `gcc` or `g++` in the container,
+while the default behaviour of packages installed with `pip` that need compilation, may be to 
+go looking for either `gcc`, etc., or some Conda-installed compiler such as 
+`x86_64-conda-linux-gnu-gcc`, etc. 
+
+Now in SUSE Linux, as used by the containers for optimal compatibility with Linux, `gcc` would
+be a very old compiler, basically version 7.5, as enterprise Linux distributions tend to stay
+with the version they were released with until the next major upgrade. Yet SUSE does support 
+newer versions of the compilers also, but they then include the major version in their name, e.g.,
+`gcc-12`, `g++-12`, etc. And one of these versions may be installed in the container, as some of
+the software in most of the AI containers is compiled during the build phase of the compiler
+to better adapt them to LUMI. 
+
+The Conda-installed compilers, are not available in most, if not all containers.
+
+Usually it is possible to tell the `pip install` process to tell which compiler to use by
+setting environment variables, e.g., `CC` for the C compiler and `CXX` for the C++ compiler.
+
+E.g., let's try to install the [`torch-scatter`](https://pypi.org/project/torch-scatter/) in
+the `PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404` module (assuming that one is installed
+already and loaded).
+With this module, it is not needed to first start a shell in the container to do the installation,
+but it is still possible to first do a `start-shell` (and this is needed with prior versions).
+The `torch-scatter` package needs the C++ compiler, so the trick to install this package, is to use
+
+```bash
+CXX=g++-12 pip install torch-scatter
+```
+
+To check if the package is indeed installed (though this is not always enough to guarantee a 
+correct installation), run
+
+```bash
+python -c 'import torch_scatter ; print( torch_scatter.__version__ )'
+```
 
 
 ## Alternative: Direct access (without the EasyBuild-generated PyTorch module)
@@ -1065,4 +1135,5 @@ The text is written in such a way though that it can be read without first readi
 
 -   [Latest edition of the "Moving your AI training jobs to LUMI" workshop](https://lumi-supercomputer.github.io/AI-latest)
 
+-   [LUMI AI Guide](https://github.com/Lumi-supercomputer/LUMI-AI-Guide)
     

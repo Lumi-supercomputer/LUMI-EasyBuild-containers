@@ -187,9 +187,10 @@ if [ -d /.singularity.d/ ]; then
     exec -a $REAL_PYTHON $EXEC_BIN "$@"
 else
     # The second variant comes from CSC, might be better if we try to mimic
-    # the behaviour of their wrapper.
-    #singularity exec $SIFPYTORCH $EXEC_BIN "$@"
-    singularity exec $SIFPYTORCH bash -c "exec -a $REAL_PYTHON $EXEC_BIN $( test $# -eq 0 || printf " %q" "$@" )"
+    # the behaviour of their wrapper, but then we need to set PYTHONPATH
+    # as Python doesn't notice it is starting from the virtual environment.
+    singularity exec $SIFPYTORCH $EXEC_BIN "$@"
+    #singularity exec $SIFPYTORCH bash -c "exec -a $REAL_PYTHON $EXEC_BIN $( test $# -eq 0 || printf " %q" "$@" )"
 fi
 """.replace( '$', '\\$' )
 
