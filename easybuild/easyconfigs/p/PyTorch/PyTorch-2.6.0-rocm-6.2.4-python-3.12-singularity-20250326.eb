@@ -209,27 +209,27 @@ cd "%(installdir)s"
 
 if [[ ! -d "user-software" ]]
 then
-    >&2 echo -e 'The \$CONTAINERROOT/user-software subdirectory does not exist, so there is nothing to put into the SquashFS file.'
+    >&2 echo -e 'The $CONTAINERROOT/user-software subdirectory does not exist, so there is nothing to put into the SquashFS file.'
     exit 2
 fi
 
 if [[ -f "user-software.squashfs" ]]
 then
-    >&2 echo -e '\$CONTAINERROOT/user-software.squashfs already exists. Please remove the file by' \
+    >&2 echo -e '$CONTAINERROOT/user-software.squashfs already exists. Please remove the file by' \\\\
                 '\\nhand if you are sure you wish to proceed and re-run the make-squashfs command.'
     exit 3
 fi
 
 mksquashfs user-software user-software.squashfs -processors 1 -no-progress |& grep -v Unrecognised
 
-echo -e '\\nCreated \$CONTAINERROOT/user-software.squashfs from \$CONTAINERROOT/user-software.' \
-        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted' \
-        '\\nfrom \$CONTAINERROOT/user-software.squashfs. Note that /user-software in the' \
-        '\\ncontainer will then be a read-only directory.' \
-        '\\nAfter reloading the module, you can also remove the \$CONTAINERROOT/user-software' \
+echo -e '\\nCreated $CONTAINERROOT/user-software.squashfs from $CONTAINERROOT/user-software.' \\\\
+        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted' \\\\
+        '\\nfrom $CONTAINERROOT/user-software.squashfs. Note that /user-software in the' \\\\
+        '\\ncontainer will then be a read-only directory.' \\\\
+        '\\nAfter reloading the module, you can also remove the $CONTAINERROOT/user-software' \\\\
         '\\nsubdirectory if you so wish.\\n'
 
-"""
+""".replace( '$', '\\$' )
 
 
 local_bin_unmake_squashfs = """
@@ -246,25 +246,25 @@ cd "%(installdir)s"
 
 if [[ ! -f "user-software.squashfs" ]]
 then
-    >&2 echo -e '\$CONTAINERROOT/user-software.squashfs does not exist so cannot uncompress it.'
+    >&2 echo -e '$CONTAINERROOT/user-software.squashfs does not exist so cannot uncompress it.'
     exit 2
 fi
 
 if [[ -d "user-software" ]]
 then
-    >&2 echo -e 'The \$CONTAINERROOT/user-software subdirectory already exists. Please remove this directory by hand' \
-                '(rm -r \$CONTAINERROOT/user-software) if you are sure you wish to proceed and re-run the unmake-squashfs command.'
+    >&2 echo -e 'The $CONTAINERROOT/user-software subdirectory already exists. Please remove this directory by hand' \\\\
+                '(rm -r $CONTAINERROOT/user-software) if you are sure you wish to proceed and re-run the unmake-squashfs command.'
     exit 3
 fi
 
 unsquashfs -d ./user-software user-software.squashfs
 
-echo -e '\\nCreated \$CONTAINERROOT/user-software subdirectory from \$CONTAINERROOT/user-software.squasfs.' \
-        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted from the' \
-        '\\n\$CONTAINERROOT/user-software directory and can now write to /user-software in the container.' \
-        '\\nYou can then also remove the \$CONTAINERROOT/user-software.squashfs file if you so wish.\\n'
+echo -e '\\nCreated $CONTAINERROOT/user-software subdirectory from $CONTAINERROOT/user-software.squasfs.' \\\\
+        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted from the' \\\\
+        '\\n$CONTAINERROOT/user-software directory and can now write to /user-software in the container.' \\\\
+        '\\nYou can then also remove the $CONTAINERROOT/user-software.squashfs file if you so wish.\\n'
 
-"""
+""".replace( '$', '\\$' )
 
 
 #
@@ -289,32 +289,32 @@ local_runscript_python_simple="""
 #!/bin/bash -e
 
 # Start conda environment inside the container
-# eval "\$WITH_CONDA_VENV"
+# eval "$WITH_CONDA_VENV"
 
 # Run application
-python "\$@"
+python "$@"
 
-"""
+""".replace( '$', '\\$' )
 
 
 local_runscript_python_distributed="""
 #!/bin/bash -e
 
 # Make sure GPUs are up
-if [ \$SLURM_LOCALID -eq 0 ] ; then
+if [ $SLURM_LOCALID -eq 0 ] ; then
     rocm-smi
 fi
 sleep 2
 
 # MIOPEN needs some initialisation for the cache as the default location
 # does not work on LUMI as Lustre does not provide the necessary features.
-export MIOPEN_USER_DB_PATH="/tmp/\$(whoami)-miopen-cache-\$SLURM_NODEID"
-export MIOPEN_CUSTOM_CACHE_DIR=\$MIOPEN_USER_DB_PATH
+export MIOPEN_USER_DB_PATH="/tmp/$(whoami)-miopen-cache-$SLURM_NODEID"
+export MIOPEN_CUSTOM_CACHE_DIR=$MIOPEN_USER_DB_PATH
 
 # Set MIOpen cache to a temporary folder.
-if [ \$SLURM_LOCALID -eq 0 ] ; then
-    rm -rf \$MIOPEN_USER_DB_PATH
-    mkdir -p \$MIOPEN_USER_DB_PATH
+if [ $SLURM_LOCALID -eq 0 ] ; then
+    rm -rf $MIOPEN_USER_DB_PATH
+    mkdir -p $MIOPEN_USER_DB_PATH
 fi
 sleep 2
 
@@ -325,23 +325,23 @@ export NCCL_SOCKET_IFNAME=hsn
 export NCCL_NET_GDR_LEVEL=3    # Not really needed anymore for ROCm 6.2 as this is now the default
 
 # Set ROCR_VISIBLE_DEVICES so that each task uses the proper GPU
-export ROCR_VISIBLE_DEVICES=\$SLURM_LOCALID
+export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
 
 # Report affinity to check 
-echo "Rank \$SLURM_PROCID --> \$(taskset -p \$\$); GPU \$ROCR_VISIBLE_DEVICES"
+echo "Rank $SLURM_PROCID --> $(taskset -p \$\$); GPU $ROCR_VISIBLE_DEVICES"
 
 # The usual PyTorch initialisations (also needed on NVIDIA)
 # Note that since we fix the port ID it is not possible to run, e.g., two
 # instances via this script using half a node each.
-export MASTER_ADDR=\$(/runscripts/get-master "\$SLURM_NODELIST")
+export MASTER_ADDR=$(/runscripts/get-master "$SLURM_NODELIST")
 export MASTER_PORT=29500
-export WORLD_SIZE=\$SLURM_NPROCS
-export RANK=\$SLURM_PROCID
+export WORLD_SIZE=$SLURM_NPROCS
+export RANK=$SLURM_PROCID
 
 # Run application
-python "\$@"
+python "$@"
 
-"""
+""".replace( '$', '\\$' )
 
 
 local_runscript_get_master="""
@@ -429,6 +429,13 @@ sanity_check_paths = {
 }
 
 sanity_check_commands = [
+    # Full syntax check of bash scripts
+    'echo "Syntax check of start-shell"     ; bash -n start-shell',
+    'echo "Syntax check of python"          ; bash -n python',
+    'echo "Syntax check of make-squashfs"   ; bash -n make-squashfs',
+    'echo "Syntax check of unmake-squashfs" ; bash -n unmake-squashfs',
+    'echo "Syntax check of conda-python-simple"      ; bash -n %(installdir)s/runscripts/conda-python-simple',
+    'echo "Syntax check of conda-python-distributed" ; bash -n %(installdir)s/runscripts/conda-python-distributed',
     # Check python wrapper script and reported version
     ('echo "Testing Python wrapper script and version" ; '
     f'python --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
