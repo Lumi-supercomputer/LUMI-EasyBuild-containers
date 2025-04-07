@@ -24,7 +24,7 @@ local_c_vllm_version =           '0.7.2+rocm624'
 local_c_mpi4py_version =         '3.1.6'
 
 local_conda_env = 'pytorch'
-
+local_c_python_m = local_c_python_mm.split('.')[0]
 
 name =          'PyTorch'
 version =       local_c_PyTorch_version
@@ -83,6 +83,17 @@ Outside of the container, the following commands are available:
     the extra installation in user-software contains a lot of files.
 *   unmake-squashfs: Unpack the user-software.squashfs file into the user-software
     subdirectory of $CONTAINERROOT to enable installing additional packages.
+*   python, python{local_c_python_m} and  python{local_c_python_mm} are wrapper scripts to start Python in the 
+    container, passing along all arugments.
+    They should work in the same way as those in the pytorch modules in the 
+    local CSC software stack.
+*   pip, pip{local_c_python_m} and pip{local_c_python_mm} are wrapper scripts to start pip in the container.
+    passing along all arguments.
+    They should work in the same way as those in the pytorch modules in the 
+    local CSC software stack.
+*   Other such wrappers are accelerate, huggingface-cli, ray and torchrun.
+    They should work in the same way as those in the pytorch modules in the 
+    local CSC software stack.
     
 Inside the container, the following scripts are available in /runscripts
 (and can be checked or edited outside the container in $CONTAINERROOT/runscripts):
@@ -135,16 +146,53 @@ local_bin_start_shell = """
 #!/bin/bash -e
 
 # Run application
-if [[ -f "/.singularity.d/Singularity" ]] 
+if [ -f "/.singularity.d/Singularity" ]
 then
     # In a singularity container, just in case a user would add this to the path.
-    exec bash "\$@"
+    exec bash "$@"
 else
     # Not yet in the container
-    singularity exec \$SIFPYTORCH bash "\$@"
+
+    if [ -z $SIFPYTORCH ] || [ ! -f $SIFPYTORCH ]
+    then
+        >2& echo "SIFPYTORCH is undefined or wrong, use this command with the PyTorch module properly loaded!"
+        exit
+    fi
+
+    singularity exec $SIFPYTORCH bash "$@"
 fi
 
-"""
+""".replace( '$', '\\$' )
+
+
+local_bin_python = """
+#!/bin/bash
+#
+# Python wrapper script, also used for some other commands.
+#
+# This will start python, or whatever the name of the link to this script is,
+# in the PyTorch container.
+#
+if [ -z $SIFPYTORCH ] || [ ! -f $SIFPYTORCH ]
+then
+    >&2 echo "SIFPYTORCH is undefined or wrong, use this command with the PyTorch module properly loaded!"
+    exit
+fi
+
+REAL_PYTHON="${BASH_SOURCE[0]}"
+EXEC_BIN=$(basename "$0")
+
+if [ -d /.singularity.d/ ]; then
+    # In a singularity container, just in case a user would add this to the path.
+    exec -a $REAL_PYTHON $EXEC_BIN "$@"
+else
+    # The second variant comes from CSC, might be better if we try to mimic
+    # the behaviour of their wrapper.
+    #singularity exec $SIFPYTORCH $EXEC_BIN "$@"
+    singularity exec $SIFPYTORCH bash -c "exec -a $REAL_PYTHON $EXEC_BIN $( test $# -eq 0 || printf " %q" "$@" )"
+fi
+""".replace( '$', '\\$' )
+
 
 local_bin_make_squashfs = """
 #!/bin/bash -e
@@ -182,6 +230,7 @@ echo -e '\\nCreated \$CONTAINERROOT/user-software.squashfs from \$CONTAINERROOT/
 
 """
 
+
 local_bin_unmake_squashfs = """
 #!/bin/bash -e
 
@@ -216,6 +265,7 @@ echo -e '\\nCreated \$CONTAINERROOT/user-software subdirectory from \$CONTAINERR
 
 """
 
+
 #
 # Code for scripts in the runscript subdirectory
 #
@@ -233,6 +283,7 @@ source /user-software/venv/{local_conda_env}/bin/activate
 
 """
 
+
 local_runscript_python_simple="""
 #!/bin/bash -e
 
@@ -243,6 +294,7 @@ local_runscript_python_simple="""
 python "\$@"
 
 """
+
 
 local_runscript_python_distributed="""
 #!/bin/bash -e
@@ -268,8 +320,8 @@ sleep 2
 # Set interfaces to be used by RCCL.
 # This is needed as otherwise RCCL tries to use a network interface it has
 # no access to on LUMI.
-export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
-export NCCL_NET_GDR_LEVEL=3
+export NCCL_SOCKET_IFNAME=hsn
+export NCCL_NET_GDR_LEVEL=3    # Not really needed anymore for ROCm 6.2 as this is now the default
 
 # Set ROCR_VISIBLE_DEVICES so that each task uses the proper GPU
 export ROCR_VISIBLE_DEVICES=\$SLURM_LOCALID
@@ -289,6 +341,7 @@ export RANK=\$SLURM_PROCID
 python "\$@"
 
 """
+
 
 local_runscript_get_master="""
 #!/usr/bin/env python3
@@ -320,6 +373,7 @@ if __name__ == '__main__':
 
 """
 
+
 #
 # Now install does scripts and do further preparations of the container.
 #
@@ -333,6 +387,17 @@ postinstallcmds = [
     'mkdir -p %(installdir)s/bin',
     f'cat >%(installdir)s/bin/start-shell <<EOF {local_bin_start_shell}EOF',
     'chmod a+x %(installdir)s/bin/start-shell',    
+    f'cat >%(installdir)s/bin/python <<EOF {local_bin_python}EOF',
+    'chmod a+x %(installdir)s/bin/python',
+    f'ln -s ./python %(installdir)s/bin/python{local_c_python_m}',
+    f'ln -s ./python %(installdir)s/bin/python{local_c_python_mm}',
+    'ln -s  ./python %(installdir)s/bin/pip',
+    f'ln -s ./python %(installdir)s/bin/pip{local_c_python_m}',
+    f'ln -s ./python %(installdir)s/bin/pip{local_c_python_mm}',
+    'ln -s  ./python %(installdir)s/bin/accelerate',
+    'ln -s  ./python %(installdir)s/bin/huggingface-cli',
+    'ln -s  ./python %(installdir)s/bin/ray',
+    'ln -s  ./python %(installdir)s/bin/torchrun',
     f'cat >%(installdir)s/bin/make-squashfs <<EOF {local_bin_make_squashfs}EOF',
     'chmod a+x %(installdir)s/bin/make-squashfs',    
     f'cat >%(installdir)s/bin/unmake-squashfs <<EOF {local_bin_unmake_squashfs}EOF',
@@ -361,6 +426,47 @@ sanity_check_paths = {
     'files': [],
     'dirs':  ['runscripts'],
 }
+
+sanity_check_commands = [
+    # Check python wrapper script and reported version
+    ('echo "Testing Python wrapper script and version" ; '
+    f'python --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
+    # Check pythonMAJOR wrapper script and reported version
+    (f'echo "Testing python{local_c_python_m} wrapper script and version" ; '
+    f'python{local_c_python_m} --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
+    # Check pythonMAJOR.MINOR wrapper script and reported version
+    (f'echo "Testing python{local_c_python_mm} wrapper script and version" ; '
+    f'python{local_c_python_mm} --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
+    # Check pip and deepspeed version
+    (f'echo "Testing pip wrapper script and DeepSpeed version (expected {local_c_DeepSpeed_version})" ; '
+    f'pip freeze | grep deepspeed | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_DeepSpeed_version}"'),    
+    # Check pipMAJOR and transformers version
+    (f'echo "Testing pip{local_c_python_m} wrapper script and transformers version (expected {local_c_transformers_version})" ; '
+    f'pip{local_c_python_m} freeze | grep transformers | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_transformers_version}"'),    
+    # Check pipMAJOR.MINOR and deepspeed version
+    (f'echo "Testing pip{local_c_python_mm} wrapper script and DeepSpeed version (expected {local_c_DeepSpeed_version})" ; '
+    f'pip{local_c_python_mm} freeze | grep deepspeed | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_DeepSpeed_version}"'),    
+    # Check pip and xformers version
+    (f'echo "Testing pip wrapper script and xformers version (expected {local_c_xformers_version})" ; '
+    f'pip list | grep xformers | awk \'{{ print $2}}\' | grep -q "{local_c_xformers_version}"'),    
+    # Check pip and flashattention version
+    (f'echo "Testing pip wrapper script and xformers version (expected {local_c_flashattention_version})" ; '
+    f'pip list | grep flash_attn | awk \'{{ print $2}}\' | grep -q "{local_c_flashattention_version}"'),    
+    # Check pip and vllm version
+    (f'echo "Testing pip wrapper script and xformers version (expected {local_c_vllm_version})" ; '
+    f'pip list | grep vllm | awk \'{{ print $2}}\' | grep -q "{local_c_vllm_version}"'),    
+    # Check pip and torch version
+    (f'echo "Testing pip wrapper script and torch version (expected {local_c_PyTorch_version})" ; '
+    f'pip list | egrep "^torch " | awk \'{{ print $2}}\' | sed -e \'s|\\+ro.*||\' | grep -q "{local_c_PyTorch_version}"'),    
+    # Check if the accelerate wrapper script can run accelerate
+    'echo "Checking if the accelerate wrapper can run accelerate" ; accelerate -h',
+    # Check if the huggingface-cli wrapper script can run huggingface-cli
+    'echo "Checking if the huggingface-cli wrapper can run huggingface-cli" ; huggingface-cli version',
+    # Check if the ray wrapper script can run ray
+    'echo "Checking if the ray wrapper can run ray" ; ray --version',
+    # Check if the torchrun wrapper script can run torchrun
+    'echo "Checking if the torchrun wrapper can run torchrun" ; torchrun -h',
+]
 
 modextravars = {
     # SIF variables currently set by a function via modluafooter.
@@ -391,9 +497,14 @@ modextravars = {
     'SINGULARITYENV_CONDA_PREFIX':      '/opt/miniconda3/envs/pytorch',
     #'SINGULARITYENV_CONDA_PYTHON_EXE':  '/opt/miniconda3/bin/python',  # This Python should not be used as-is. Instead the wrapper from the Python venv should be used.
     'SINGULARITYENV_VIRTUAL_ENV':       '/user-software/venv/pytorch',
+    # Typical NCCL environment variables
+    'NCCL_SOCKET_IFNAME':               'hsn',
+    'NCCL_NET_GDR_LEVEL':               '3',  # Not really needed anymore for ROCm 6.2 as this is now the default
 }
 
 modluafooter = f"""
+conflict( 'singularity-AI-bindings' )
+
 -- Call a routine to set the various environment variables.
 create_container_vars( '{local_sif}', 'PyTorch', '%(installdir)s', '{local_singularity_bind}' )
 """

@@ -1,7 +1,5 @@
 # PyTorch container user instructions
 
-**BETA VERSION, problems may occur and may not be solved quickly.**
-
 The containers that are provided by the LUMI User Support Team can be used in
 two possible ways:
 
@@ -16,6 +14,8 @@ two possible ways:
 Containers with PyTorch provided in local software stacks (e.g., the CSC software stack)
 may be build differently with different wrapper scripts so instructions on this page
 may not apply to those.
+
+For more information on AI on LUMI, you can also check the [LUMI AI Guide](https://github.com/Lumi-supercomputer/LUMI-AI-Guide).
 
 
 ## Module and wrapper scripts
@@ -99,6 +99,16 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
 
     -   `unmake-squashfs`: Unpack the user-software.squashfs file into the user-software
         subdirectory of $CONTAINERROOT to enable installing additional packages.
+        
+    From the PyTorch 2.6.0 modules onwards, it also creates wrapper scripts for the
+    `python`and `pip` commands (including the commands with major and major.minor Python
+    version in their name), and a number of other commands including `accelerate`, 
+    `huggingface-cli`, `ray` and `torchrun`. These wrappers should work in the same 
+    way as those in the CSC local software stacks as documented in the [CSC PyTorch documentation](https://docs.csc.fi/apps/pytorch/)
+    and the [CSC machine learning guide](https://docs.csc.fi/support/tutorials/ml-guide/).
+    These wrappers still support the other features of this module, and in particular the way
+    extra packages in a virtual environment can be managed to reduce the load on the 
+    file system.
             
 The container uses a miniconda environment in which Python and its packages are installed.
 That environment needs to be activated in the container when running, which can be done
@@ -124,6 +134,11 @@ or if the `start-shell` script is available (which is the case for most of these
 ```
 start-shell -c 'pip list'
 ```
+
+Note that when using the PyTorch containers through the modules provided by the EasyConfigs
+on this page, one should **not** use the [`singularity-AI-bindings`](../../s/singularity-AI-bindings/index.md)
+module, as the functionality of that module is already included in the `PyTorch` container 
+modules discussed on this page (and may even be more fine-tuned to the specific container).
 
 
 ## Examples with the wrapper scripts
