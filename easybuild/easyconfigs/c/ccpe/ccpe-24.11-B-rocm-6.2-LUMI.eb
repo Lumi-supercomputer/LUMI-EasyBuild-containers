@@ -597,13 +597,13 @@ unset SLURM_EXPORT_ENV ;
 
 ]==] )
 
-if mode() == 'load' then
-LmodMessage( [==[
-
-By using this container, you agree to the license
-https://downloads.hpe.com/pub/softlib2/software1/doc/p1796552785/v113125/eula-en.html .
-]==] )
-end
+-- if mode() == 'load' then
+-- LmodMessage( [==[
+-- 
+-- By using this container, you agree to the license
+-- https://downloads.hpe.com/pub/softlib2/software1/doc/p1796552785/v113125/eula-en.html .
+-- ]==] )
+-- end
 
 """
 
