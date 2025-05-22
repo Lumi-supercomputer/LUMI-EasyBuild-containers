@@ -1,0 +1,634 @@
+# Developed by Kurt Lust for LUMI
+# Before installing set the secret source path of the container in 
+# EASYBUILD_SOURCEPATH.
+#DOC This module provides a modified version of the CPE container as it comes from HPE.
+#DOC The goal is to integrate it better with the current LUMI environment. Changes to the
+#DOC container are also made through this EasyConfig, so you may use it as a template to
+#DOC adapt the CPE containers to your needs.
+#DOC
+#DOC This B-rocm version bind mounts the actual ROCm installation from a SquashFS file
+#DOC provided on LUMI which should give better compile performance than when simply
+#DOC mounting a directory from one of the LUMI parallel file systems with the ROCm
+#DOC installation. Some libraries  on the OS side may not be the best version, so in 
+#DOC case of trouble, switch to the C-rocm version.
+#DOC
+#DOC This container can be installed in `partition/container` via LUMI/24.03 or more recent
+#DOC LUMI stacks, after which the module will be available in CrayEnv and all versions of the
+#DOC LUMI stack.
+easyblock = 'MakeCp'
+
+local_PRoot_version =             '5.4.0'         #  https://github.com/proot-me/proot/releases
+local_rocm_version =              '6.0.3'
+
+local_c1_rocm_version     = '6.3.4'
+local_c2_rocm_version     = '6.2.4'
+local_c_rocm_major_minor = '.'.join( local_c1_rocm_version.split('.')[:2] )
+
+name =          'ccpe'
+version =       '25.03'
+versionsuffix = f'-B-rocm-{local_c_rocm_major_minor}-SP5-LUMI'
+
+local_sif = f'cpe-{version}-SP5.sif'
+
+local_ccpe_version =     f'{version}{versionsuffix} '
+local_appl_lumi =        f'/pfs/lustref1/appl/lumi/ccpe/appl/{version}-{local_c_rocm_major_minor}'
+#local_appl_lumi =        f'/appl/lumi'
+
+homepage = 'https://cpe.ext.hpe.com/docs/24.11/index.html'
+
+whatis = [
+    'Description: Containerised HPE-Cray Programming Environment'
+]
+
+description = f"""
+This version provides the {version} programming environment in a container
+to start experimenting with this version before it is generally available
+on LUMI.
+
+This version of the container is enhanced with some additional SUSE packages
+to be more suited for development for software in the LUMI software stacks.
+
+The module sets the necessary bindings to be able to access regular user
+files on LUMI, to import some bits and pieces that are not in the container,
+and to be able to call Slurm from within the container.
+
+The module defines a number of environment variables:
+*   SIF and SIFCCPE: The full path and name of the Singularity SIF file 
+    to use with singularity exec etc.
+*   EXPORTCCPE: List of variables to export to a batch job if you want
+    to start with a clean environment yet still find back the container.
+*   SWITCHTOCCPE: To be used as `eval $SWITCHTOCCPE` at the start of a
+    job script to execute the job script in the container.
+*   SINGULARITY_BIND: Bind mounts for the container, including all LUMI
+    user file systems.
+*   SINGULARITYENV_PS1: A better prompt than "singularity>" to indicate
+    that you are in the container. May be overwritten by the prompt set in
+    your ~/.bashrc or ~/.profile with ccpe-run.
+    
+Inside the container only:
+*   INITCCPE: `eval $INITCCPE` can be used to fully re-initialise the 
+    environment in the container.
+    
+Helper scripts outside the container to start commands in an environment
+that is not polluted by the system environment:
+*   `ccpe-shell` starts a shell in the container using `singularity shell`.
+*   `ccpe-exec` executes the command passed as arguments in the container 
+    using `singularity exec`.
+*   `ccpe-run` is another command that starts a shell which is the defined
+    behaviour for `singularity run`. This shell will read your local .bashrc.
+*   `ccpe-singularity` is a wrapper that takes all the options of the
+    regular singularity command
+    
+For extensive documentation, consult the page for ccpe in the LUMI Software 
+Library.
+"""
+
+docurls = [
+    'https://lumi-supercomputer.github.io/LUMI-EasyBuild-docs/c/ccpe/',
+]
+
+toolchain = SYSTEM
+
+sources = [
+    {
+        'filename':    local_sif,
+        'extract_cmd': '/bin/cp -L %s .'
+    },
+]
+
+builddependencies = [
+    ('PRoot', local_PRoot_version),
+]
+
+skipsteps = ['build']
+
+files_to_copy = [
+    ([local_sif], '.'),
+]
+
+
+################################################################################
+#
+# Script Container definition for `singularity build`.
+#
+local_container_def = f"""
+Bootstrap: localimage
+
+From: {local_sif}
+
+%environment
+
+    export BASH_ENV=/opt/cray/pe/lmod/lmod/init/bash
+
+%files
+
+    %(installdir)s/config/99-z-init-ccpe.sh /.singularity.d/env
+    %(installdir)s/config/profile.local     /etc
+    %(installdir)s/config/bash.bashrc.local /etc
+    %(installdir)s/config/runscript         /.singularity.d
+    
+    /opt/cray/pe/lmod/modulefiles/core/rocm/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/core/rocm/{local_c1_rocm_version}.lua
+    /opt/cray/pe/lmod/modulefiles/core/amd/{local_rocm_version}.lua  /opt/cray/pe/lmod/modulefiles/core/amd/{local_c1_rocm_version}.lua
+    /opt/cray/pe/lmod/modulefiles/core/rocm/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/core/rocm/{local_c2_rocm_version}.lua
+    /opt/cray/pe/lmod/modulefiles/core/amd/{local_rocm_version}.lua  /opt/cray/pe/lmod/modulefiles/core/amd/{local_c2_rocm_version}.lua
+
+    /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c1_rocm_version}.lua 
+    /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c2_rocm_version}.lua 
+
+    /etc/group
+    /etc/passwd
+    
+    /usr/lib64/pkgconfig/rocm-5.7.pc
+    /usr/lib64/pkgconfig/rocm-{local_rocm_version}.pc /usr/lib64/pkgconfig/rocm-{local_c1_rocm_version}.pc
+    /usr/lib64/pkgconfig/rocm-{local_rocm_version}.pc /usr/lib64/pkgconfig/rocm-{local_c2_rocm_version}.pc
+     
+    /etc/slurm/slurm.conf
+
+%post
+
+    # Install additional packages
+    zypper --non-interactive --no-gpg-checks addrepo https://download.opensuse.org/distribution/leap/15.5/repo/oss/ oss
+    
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libopenssl-devel
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libcurl-devel
+    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage curl
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage unzip
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage glibc-devel-static
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage bzip2
+    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage groff
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage rsync # Needed for ROCm installation...
+    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage vim
+
+    # The container lacks locales except for C and POSIX which causes too many issues, including some
+    # Python packages for EasyBuild that do not even install or crash when running.    
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage glibc-locale
+
+    # Tweak Lmod to use a different cache directory
+    sed -e 's|.cache/lmod|.cache/lmod/ccpe-{local_ccpe_version}|' -i /opt/cray/pe/lmod/lmod/libexec/myGlobals.lua
+    
+    # Tweak the ROCm and AMD modules
+    sed -e 's|{local_rocm_version}|{local_c1_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/core/rocm/{local_c1_rocm_version}.lua
+    sed -e 's|{local_rocm_version}|{local_c1_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/core/amd/{local_c1_rocm_version}.lua
+    sed -e 's|{local_rocm_version}|{local_c2_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/core/rocm/{local_c2_rocm_version}.lua
+    sed -e 's|{local_rocm_version}|{local_c2_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/core/amd/{local_c2_rocm_version}.lua
+    
+    sed -e 's|{local_rocm_version}|{local_c1_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c1_rocm_version}.lua
+    sed -e 's|{local_rocm_version}|{local_c2_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c2_rocm_version}.lua 
+    
+    # Tweak the pkgconfig files for ROCm
+    ln -s /usr/lib64/pkgconfig/rocm-5.7.pc /usr/lib64/pkgconfig/rocm.pc
+    sed -e 's|{local_rocm_version}|{local_c1_rocm_version}|g' -i /usr/lib64/pkgconfig/rocm-{local_c1_rocm_version}.pc
+    sed -e 's|{local_rocm_version}|{local_c2_rocm_version}|g' -i /usr/lib64/pkgconfig/rocm-{local_c2_rocm_version}.pc
+
+    # Create the /opt/rocm symbolic link
+    mkdir -p /opt/rocm-{local_c1_rocm_version}
+    ln -s /opt/rocm-{local_c1_rocm_version} /etc/alternatives/rocm
+    ln -s /etc/alternatives/rocm /opt/rocm
+    
+    # No longer needed, we prefer to bind the system one to always be up-to-date.
+    /bin/rm -rf /etc/slurm
+
+""".replace( '$', '\\$' )
+
+
+################################################################################
+#
+# Runscript for the container
+#
+local_runscript = """
+#!/bin/bash
+#
+# This is the most basic runscript possible: "singularity run" for this
+# container, starts "bash" and as the "singularity run" prescribes,
+# all arguments are simply passed to bash.
+#
+/usr/bin/bash "$@"
+
+""".replace( '$', '\\$' )
+
+
+################################################################################
+#
+# Script 99-z-init-ccpe.sh
+#
+# Initialisation script for /etc/profile.d
+#
+local_99_z_ccpe_init = f"""
+export INITCCPE='
+if [ "$CCPE_VERSION" != "{local_ccpe_version}" ] ;
+then
+
+    lmod_dir="/opt/cray/pe/lmod/lmod" ;
+        
+    function clear-lmod() {{ [ -d $HOME/.cache/lmod ] && /bin/rm -rf $HOME/.cache/lmod ; }} ;
+    
+    source /etc/cray-pe.d/cray-pe-configuration.sh ;
+    
+    source $lmod_dir/init/profile ;
+    
+    mod_paths="/opt/cray/pe/lmod/modulefiles/core /opt/cray/pe/lmod/modulefiles/craype-targets/default $mpaths /opt/cray/modulefiles /opt/modulefiles" ;
+    MODULEPATH="" ;
+    for p in $(echo $mod_paths) ;
+    do 
+        if [ -d $p ] ; 
+        then
+            MODULEPATH=$MODULEPATH:$p ;
+        fi ;
+    done ;
+    export MODULEPATH=${{MODULEPATH/:/}} ;
+    
+    LMOD_SYSTEM_DEFAULT_MODULES=$(echo ${{init_module_list:-PrgEnv-$default_prgenv}} | sed -E "s_[[:space:]]+_:_g") ;
+    export LMOD_SYSTEM_DEFAULT_MODULES ;
+    eval "source $BASH_ENV && module --initial_load --no_redirect restore" ;
+    unset lmod_dir ;
+
+    export CCPE_VERSION="{local_ccpe_version}" ;
+    
+fi ;
+if [[ ${{-/*i*/i}} == i ]] ;
+then
+    if [ -z "$SLURM_PROCID" -o "$SLURM_PROCID" = "0" ]; 
+    then
+        printf "\\nWelcome to the CPE container.\\n" ;
+        printf "By using it you agree to the license https://downloads.hpe.com/pub/softlib2/software1/doc/p1796552785/v113125/eula-en.html\\n\\n" ;
+    fi ;
+fi ;
+'
+
+""".replace( '$', '\\$' )
+
+################################################################################
+#
+# Custom script /etc/bash.bashrc.local
+#
+local_bashrc_local = """
+#! /bin/sh
+
+eval $INITCCPE
+
+""".replace( '$', '\\$' )
+
+
+################################################################################
+#
+# Custom script /etc/profile.local
+#
+#
+local_profile_local = """
+
+# Currently empty
+
+""".replace( '$', '\\$' )
+
+
+################################################################################
+#
+# Script clearLmod-save
+#
+# A script that defines a function that can be used to clear Lmod while saving
+# some environment variables that were set by Lmod.
+#
+local_clearLmod_save = """
+#!/bin/bash
+
+function clearLmod-save {
+    # The arguments are the variables set by Lmod that should be restored.
+
+    # Save the variables that should be restored
+    for var in "$@"
+    do
+        if [ -v $var ] # Only try to copy if the variable really exists.
+        then
+            # eval save_$var="'${!var}'"
+            # The next is a trick found via ChatGPT which is safer then the 
+            # previous line when the commands are put in a variable, but one
+            # has to be careful in a bash function as it makes the variable
+            # a local one. So when restoring we need some additiona magic.
+            eval $(declare -p $var | sed -e "s/$var/save_$var/")
+        fi
+    done
+
+    # Now clean up
+    module --force purge
+    eval $($LMOD_DIR/clearLMOD_cmd --shell bash --full --quiet)
+    unset LUMI_INIT_FIRST_LOAD
+    ## Make sure that /etc/profile does not quit immediately when called.
+    unset PROFILEREAD
+
+    # Restore the variables
+    for var in "$@"
+    do
+        varname="save_$var"
+        if [ -v $varname ]
+        then
+            # eval export $var="'${!varname}'"
+            # Some magic needed: Declare the variable as global and export, so -gx.
+            eval $(declare -p $varname | sed -e "s/save_$var/$var/" -e "s/declare -x/declare -g/")
+            export $var
+        fi
+    done
+
+}
+
+""".replace( '$', '\\$' )
+
+
+################################################################################
+#
+# Script ccpe-shell
+#
+# Start a shell in the container with proper initialisation.
+#
+local_ccpe_shell=f"""
+#!/bin/bash
+
+source %(installdir)s/config/clearLmod-save
+
+if [ "$CCPE_VERSION" != "{local_ccpe_version}" ]
+then
+    clearLmod-save ${{EXPORTCCPE//,/ }}
+fi
+
+singularity shell "$SIFCCPE" "$@"
+
+""".replace( '$', '\\$' )
+
+
+################################################################################
+#
+# Script ccpe-exec
+#
+# Execute in the container with proper initialisation.
+#
+local_ccpe_exec = f"""
+#!/bin/bash
+
+source %(installdir)s/config/clearLmod-save
+
+if [ "$CCPE_VERSION" != "{local_ccpe_version}" ]
+then
+    clearLmod-save ${{EXPORTCCPE//,/ }}
+fi
+
+singularity exec "$SIFCCPE" "$@"
+
+""".replace( '$', '\\$' )
+
+
+################################################################################
+#
+# Script ccpe-run
+#
+# Run the container with proper initialisation.
+#
+local_ccpe_run = f"""
+#!/bin/bash
+
+source %(installdir)s/config/clearLmod-save
+
+if [ "$CCPE_VERSION" != "{local_ccpe_version}" ]
+then
+    clearLmod-save ${{EXPORTCCPE//,/ }}
+fi
+
+singularity run "$SIFCCPE" "$@"
+
+""".replace( '$', '\\$' )
+
+
+################################################################################
+#
+# Script ccpe-singularity
+#
+# Run singularity with proper initialisation.
+#
+local_ccpe_singularity = f"""
+#!/bin/bash
+
+source %(installdir)s/config/clearLmod-save
+
+if [ "$CCPE_VERSION" != "{local_ccpe_version}" ]
+then
+    clearLmod-save ${{EXPORTCCPE//,/ }}
+fi
+
+singularity "$@"
+
+""".replace( '$', '\\$' )
+
+
+################################################################################
+#
+# EasyBuild build commands
+#
+postinstallcmds = [
+    # First copy files that we want to inject in the container
+    'mkdir -p %(installdir)s/config',
+    f'cat >%(installdir)s/config/runscript <<EOF {local_runscript}EOF',
+    'chmod a+rx %(installdir)s/config/runscript',
+    f'cat >%(installdir)s/config/99-z-init-ccpe.sh <<EOF {local_99_z_ccpe_init}EOF',
+    'chmod a+rx %(installdir)s/config/99-z-init-ccpe.sh',
+    f'cat >%(installdir)s/config/bash.bashrc.local <<EOF {local_bashrc_local}EOF',
+    'chmod a+rx %(installdir)s/config/bash.bashrc.local',
+    f'cat >%(installdir)s/config/profile.local <<EOF {local_profile_local}EOF',
+    'chmod a+rx %(installdir)s/config/profile.local',
+    # Now create the definition file
+    f'cat >%(installdir)s/config/ccpe-additional-packages.def <<EOF {local_container_def}EOF',
+    'chmod a+r %(installdir)s/config/ccpe-additional-packages.def',
+    #'false',
+    # Build the container
+    # We need to bind Slurm to keep the license check happy?
+    f'cd %(installdir)s && SINGULARITY_CACHEDIR=/tmp SINGULARITY_TMPDIR=/tmp singularity build --force {local_sif} %(installdir)s/config/ccpe-additional-packages.def',
+    # Install scripts that run outside the container
+    'mkdir -p %(installdir)s/bin',
+    f'cat >%(installdir)s/config/clearLmod-save <<EOF {local_clearLmod_save}EOF',
+    'chmod a+rx %(installdir)s/config/clearLmod-save',
+    f'cat >%(installdir)s/bin/ccpe-shell <<EOF {local_ccpe_shell}EOF',
+    'chmod a+rx %(installdir)s/bin/ccpe-shell',
+    f'cat >%(installdir)s/bin/ccpe-exec <<EOF {local_ccpe_exec}EOF',
+    'chmod a+rx %(installdir)s/bin/ccpe-exec',
+    f'cat >%(installdir)s/bin/ccpe-run <<EOF {local_ccpe_run}EOF',
+    'chmod a+rx %(installdir)s/bin/ccpe-run',
+    f'cat >%(installdir)s/bin/ccpe-singularity <<EOF {local_ccpe_singularity}EOF',
+    'chmod a+rx %(installdir)s/bin/ccpe-singularity',
+]
+
+sanity_check_paths = {
+    'files': [local_sif],
+    'dirs':  ['bin', 'config'],
+}
+
+local_expected_cce = '19.0.0'
+
+sanity_check_commands = [
+    # The next test will check if modules are correctly initialised and if the correct cce
+    # module is present.
+    f'echo "INFO: Testing if cce/{local_expected_cce} is present" ; ccpe-singularity exec "$SIFCCPE" bash -i -c \'module --terse list\' |& grep -q "cce/{local_expected_cce}"',
+    # Check if libfabric is loaded correctly and if it is the version of the system.
+    'echo "INFO: Checking if the system libfabric is loaded by default." ; module load libfabric && test $(ccpe-singularity exec "$SIFCCPE" bash -i -c \'module --terse list\' |& grep "libfabric") = $(module --terse list |& grep "libfabric")',  
+    # Check if the CXI provider is found.
+    'echo "INFO: Checking for the CXI provider." ; ccpe-singularity exec "$SIFCCPE" bash -i -c \'fi_info\' | egrep -q "provider:[[:space:]]+cxi"',
+    # Test of the Slurm integration
+    'echo "INFO: Checking Slurm sinfo command." ; ccpe-exec sinfo | grep -q standard-g',
+    #
+    # Tried testing with ccpe-run or ccpe-singularity run also but for some reason, this does not work in Easybuild,
+    # and the runscript gets stuck, possibly trying to use a terminal which is not there. So even though running
+    # something with `singularity run` seems to work on the command line, it may not work in batch mode.
+]
+
+
+################################################################################
+#
+# Custom module that does a lot of the magic.
+#
+modextravars = {
+    'SIF':                '%(installdir)s/' + local_sif,
+    'SIFCCPE':            '%(installdir)s/' + local_sif,
+    # The next line is very tricky as both Python and LUA interpret escape sequences in this string.
+    # In the shell, we want PS1='\[\e[91m\]Container::\[\e[00m\] \u@\h:\w >'
+    # In Lmod, we need setenv( 'SINGULARITYENV_PS1', '\\[\\e[91m\\]Container::\\[\\e[00m\\] \\u@\\h:\\w > ' )
+    # And in Python for EasyBuild, this then becomes:
+    'SINGULARITYENV_PS1': '\\\\[\\\\e[91m\\\\]Container::\\\\[\\\\e[00m\\\\] \\\\u@\\\\h:\\\\w > ',
+    'EXPORTCCPE':         'SINGULARITY_BIND,SIF,SIFCCPE,SWITCHTOCCPE,EXPORTCCPE,SINGULARITYENV_PS1',
+    #'SBATCH_EXPORT':      'SINGULARITY_BIND,SWITHCTOCCPE,SIF,SIFCCPE',
+    #'SLURM_EXPORT_ENV':   'SINGULARITY_BIND,SWITHCTOCCPE,SIF,SIFCCPE', # In case srun is called directly
+    #'SWITCHTOCCPE':       # Have to do this in modluafooter as we need multi-line strings for readability of the code.
+}
+
+local_singularity_bind = ','.join( [ # Add bindings here!
+    # Files generated by this EasyConfig
+    # The following ones are injected in the container already.
+    #'%(installdir)s/config/runscript:/.singularity.d/runscript',                    # Overwrite the runscript
+    #'%(installdir)s/config/99-z-init-ccpe.sh:/.singularity.d/env/99-z-init-ccpe.sh', # Set INITCCPE 
+    #'%(installdir)s/config/bash.bashrc.local:/etc/bash.bashrc.local',                # Properly initialise the module environment
+    #'%(installdir)s/config/profile.local:/etc/profile.local',                        # For possible future use, currently empty
+    
+    # Lustre storage
+    '/pfs',
+    '/users',
+    '/projappl',
+    '/project',
+    '/scratch',
+    '/flash',
+    '/appl/local',
+    f'{local_appl_lumi}:/appl/lumi',
+
+    # ROCm is mounted from a SquashFS file, module files and pkgconfig files are 
+    # included in the container. 
+    # Lmod may remove the trailing slash, but that doesn't seem to bother the correct
+    # working of this bind.
+    f'/pfs/lustref1/appl/lumi/ccpe/rocm/{local_c1_rocm_version}/rocm-{local_c1_rocm_version}.squashfs:/opt/rocm-{local_c1_rocm_version}:image-src=/',
+    f'/pfs/lustref1/appl/lumi/ccpe/rocm/{local_c2_rocm_version}/rocm-{local_c2_rocm_version}.squashfs:/opt/rocm-{local_c2_rocm_version}:image-src=/',
+    # Do we need to bind /dev/kfd and /dev/dri? They seem to be in the container by default.
+
+    # System libfabric install: Different from the ccpe-config script as that was for Red Hat
+    # For the modules, binding the specific version is not enough as that would leave the newer
+    # module in the container.
+    '/opt/cray/libfabric/1.15.2.0',    # module --redirect show libfabric | grep '"PATH"' | awk -F'"' '{ print $4 }' | sed -e 's|/bin||'
+    '/opt/cray/modulefiles/libfabric', # module --loc --redirect show libfabric | sed -e 's|\(.*libfabric.*\)/.*|\1|'
+    '/usr/lib64/libcxi.so.1',          # ldd $(module --redirect show libfabric | grep '"LD_LIBRARY_PATH"' | awk -F'"' '{ print $4 }')/libfabric.so | grep libcxi | awk '{print $3}'
+
+    # XPMEM binding
+    '/opt/cray/modulefiles/xpmem/2.8.2-1.0_5.1__g84a27a5.shasta',  # module --loc --redirect show xpmem
+    '/opt/cray/xpmem',                                             # echo $(dirname `pkg-config --variable=prefix cray-xpmem`)
+    '/usr/lib64/pkgconfig/cray-xpmem.pc',                          # echo "$(pkg-config --variable=pcfiledir cray-xpmem)/cray-xpmem.pc"
+      
+    # Do we need PALs on LUMI? Likely not
+    # echo $(dirname `module --redirect show cray-pals | grep PATH | awk -F'"' '{ print $4 }' | tail -n 1`)
+    # '/usr/lib64/libjansson.so.4', 
+    
+    # System mounts - List from Alfio webinar
+    '/var/spool',
+    '/run/cxi',
+    '/etc/host.conf',
+    '/etc/nsswitch.conf',
+    '/etc/resolv.conf',
+    '/etc/ssl/openssl.cnf',
+    # Additional one for the specific setup of the container in this module
+    '/etc/cray-pe.d/cray-pe-configuration.sh',
+
+    # Slurm mounts
+    '/etc/slurm', # Even if Slurm support does not yet work, we need this to detect we're on LUMI.
+    '/usr/bin/sacct',
+    '/usr/bin/salloc',
+    '/usr/bin/sattach',
+    '/usr/bin/sbatch',
+    '/usr/bin/sbcast',
+    '/usr/bin/scontrol',
+    '/usr/bin/sinfo',
+    '/usr/bin/squeue',
+    '/usr/bin/srun',
+    '/usr/lib64/slurm',
+    '/var/spool/slurmd',
+    '/var/run/munge',
+    '/usr/lib64/libmunge.so.2',
+    '/usr/lib64/libmunge.so.2.0.0',
+    '/usr/include/slurm',
+
+] )
+
+modluafooter = f"""
+
+-- Set the bind mounts
+prepend_path( 'SINGULARITY_BIND', '{local_singularity_bind}', ',' )
+
+-- Inject some configuration files from LUMI.
+-- These are currently done in the main list (first one) or included in the container.
+-- prepend_path( 'SINGULARITY_BIND', '/etc/cray-pe.d/cray-pe-configuration.sh:/etc/cray-pe.d/cray-pe-configuration.sh', ',' )
+-- prepend_path( 'SINGULARITY_BIND', '%(installdir)s/config/99-z-init-ccpe.sh:/.singularity.d/env/99-z-init-ccpe.sh', ',' )
+-- prepend_path( 'SINGULARITY_BIND', '%(installdir)s/config/bash.bashrc.local:/etc/bash.bashrc.local', ',' ) -- Or could chose to take the one from the system.
+-- prepend_path( 'SINGULARITY_BIND', '%(installdir)s/config/profile.local:/etc/profile.local', ',' )
+
+setenv( 'SWITCHTOCCPE', [==[
+if [ ! -d "/.singularity.d" ] ;
+then
+
+    if [ "$CCPE_VERSION" != "{local_ccpe_version}" ] ;
+    then
+    
+        for var in ${{EXPORTCCPE//,/ }} ;
+        do
+            if [ -v $var ] ; 
+            then
+                eval $(declare -p $var | sed -e "s/$var/save_$var/") ;
+            fi ;
+        done ;
+    
+        module --force purge ;
+        eval $($LMOD_DIR/clearLMOD_cmd --shell bash --full --quiet) ;
+        unset LUMI_INIT_FIRST_LOAD ;
+        unset PROFILEREAD ;
+    
+        for var in ${{save_EXPORTCCPE//,/ }} ;
+        do
+            varname="save_$var" ;
+            if [ -v $varname ] ;
+            then
+                eval $(declare -p $varname | sed -e "s/save_$var/$var/") ;
+                unset $varname ;
+            fi ;
+        done ;
+        
+    fi ;
+
+    exec singularity exec "$SIFCCPE" "$0" "$@" ;
+
+fi ;
+
+eval $INITCCPE ;
+
+unset SLURM_EXPORT_ENV ;
+
+]==] )
+
+if mode() == 'load' then
+LmodMessage( [==[
+
+By using this container, you agree to the license
+https://downloads.hpe.com/pub/softlib2/software1/doc/p1796552785/v113125/eula-en.html .
+]==] )
+end
+
+"""
+
+moduleclass = 'devel'
