@@ -111,7 +111,7 @@ e.g.,
 
 ```bash
 module load LUMI/24.03 partition/container
-eb ccpe-24.11-B-rocm-6.2-LUMI.eb --sourcepath <directory with the cpe_2411.sif file>
+eb ccpe-24.11-B-rocm-6.2-LUMI.eb
 ```
 
 Any more recent version of the LUMI stack on the system will also work for the installation.
