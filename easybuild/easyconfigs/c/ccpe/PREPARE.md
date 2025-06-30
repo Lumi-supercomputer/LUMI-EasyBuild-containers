@@ -170,4 +170,21 @@ not be passed to others.
         singularity build cpe-25.03-SP5.sif cpe-25.03-SP5.def
         ```
 
+-   Preparing ROCm:
 
+    -   Build the '-C'-version of the container with ROCm built in.
+
+    -   Create a tar-file `rocm-6.3.4.tar` in `/opt`: 
+
+        ```
+        tar -xf rocm-6.3.4.tar rocm-6.3.5
+        ```
+
+    -   Outside the container:
+  
+        ```
+        umask 002
+        mkdir tmp && cd tmp
+        tar -xf ../rocm-6.3.4.tar
+        mksquashfs rocm-6.3.4 ../rocm-6.3.4.squashfs -processors 16
+        ```
