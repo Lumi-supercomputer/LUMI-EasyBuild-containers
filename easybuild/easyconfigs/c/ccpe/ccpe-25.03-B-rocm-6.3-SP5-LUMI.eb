@@ -135,6 +135,8 @@ From: {local_sif}
     /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c1_rocm_version}.lua 
     /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c2_rocm_version}.lua 
 
+    /opt/cray/pe/pals/1.2.12
+
     /etc/group
     /etc/passwd
     
@@ -151,13 +153,14 @@ From: {local_sif}
     
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libopenssl-devel
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libcurl-devel
-    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage curl
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage curl
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage unzip
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage glibc-devel-static
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage bzip2
-    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage groff
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage groff
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage rsync # Needed for ROCm installation...
-    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage vim
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage vim
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libjansson4
 
     # The container lacks locales except for C and POSIX which causes too many issues, including some
     # Python packages for EasyBuild that do not even install or crash when running.    
@@ -165,6 +168,15 @@ From: {local_sif}
 
     # Tweak Lmod to use a different cache directory
     sed -e 's|.cache/lmod|.cache/lmod/ccpe-{local_ccpe_version}|' -i /opt/cray/pe/lmod/lmod/libexec/myGlobals.lua
+    
+    # Correct the broken default link for xpmem via /etc/alternatives
+    ln -s /opt/cray/xpmem/2.8.2-1.0_5.1__g84a27a5.shasta /etc/alternatives/cray-xpmem
+    
+    # Put links for pals
+    ln -s /opt/cray/pe/pals/1.2.12 /opt/cray/pe/pals/default
+    ln -s /opt/cray/pe/pals/default/lib/libpals.so       /opt/cray/pe/lib64/libpals.so
+    ln -s /opt/cray/pe/pals/default/lib/libpals.so.0     /opt/cray/pe/lib64/libpals.so.0
+    ln -s /opt/cray/pe/pals/default/lib/libpals.so.0.0.0 /opt/cray/pe/lib64/libpals.so.0.0.0
     
     # Tweak the ROCm and AMD modules
     sed -e 's|{local_rocm_version}|{local_c1_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/core/rocm/{local_c1_rocm_version}.lua

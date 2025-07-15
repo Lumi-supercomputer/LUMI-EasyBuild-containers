@@ -818,4 +818,7 @@ Other elements in the build:
     which depends on the version of the PE in variables in the EasyConfig, defined 
     just above the sanity check commands (currently only 1).
 
-   
+-   Update on 14 July 2025: Add correct link to use xpmem; copy pals from the system
+    and put links in the necessary pages, and install a system package that is needed
+    for that library.
+
