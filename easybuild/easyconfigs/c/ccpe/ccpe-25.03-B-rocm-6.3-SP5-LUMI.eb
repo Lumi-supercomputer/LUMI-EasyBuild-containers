@@ -135,7 +135,15 @@ From: {local_sif}
     /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c1_rocm_version}.lua 
     /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c2_rocm_version}.lua 
 
-    /opt/cray/pe/pals/1.2.12
+    /opt/cray/pals/1.3.2                              /opt/cray/pals/1.3.2
+    /opt/cray/pals/lmod/modulefiles/core/cray-pals    /opt/cray/pe/lmod/modulefiles/core/cray-pals
+    /opt/cray/pals/lmod/modulefiles/core/cray-libpals /opt/cray/pe/lmod/modulefiles/core/cray-libpals
+    /opt/cray/pals/modulefiles/cray-pals              /opt/cray/pe/modulefiles/cray-pals
+    /opt/cray/pals/modulefiles/cray-libpals           /opt/cray/pe/modulefiles/cray-libpals
+    
+    # Get libjansson from the system as the version we download with OpenSUSE is an older version
+    # that gives issues with cray-pals
+    /usr/lib64/libjansson.so.4.14.0
 
     /etc/group
     /etc/passwd
@@ -143,7 +151,9 @@ From: {local_sif}
     /usr/lib64/pkgconfig/rocm-5.7.pc
     /usr/lib64/pkgconfig/rocm-{local_rocm_version}.pc /usr/lib64/pkgconfig/rocm-{local_c1_rocm_version}.pc
     /usr/lib64/pkgconfig/rocm-{local_rocm_version}.pc /usr/lib64/pkgconfig/rocm-{local_c2_rocm_version}.pc
-     
+    
+    # 2 files/directories that we will remove again but need for now for a successful build.
+    /opt/cray/xpmem
     /etc/slurm/slurm.conf
 
 %post
@@ -160,23 +170,24 @@ From: {local_sif}
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage groff
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage rsync # Needed for ROCm installation...
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage vim
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libjansson4
 
     # The container lacks locales except for C and POSIX which causes too many issues, including some
     # Python packages for EasyBuild that do not even install or crash when running.    
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage glibc-locale
-
+    
     # Tweak Lmod to use a different cache directory
     sed -e 's|.cache/lmod|.cache/lmod/ccpe-{local_ccpe_version}|' -i /opt/cray/pe/lmod/lmod/libexec/myGlobals.lua
     
-    # Correct the broken default link for xpmem via /etc/alternatives
+    # Correct the broken default link for xpmem via /etc/alternatives and make sure
+    # the libraries are in the default search path
     ln -s /opt/cray/xpmem/2.8.2-1.0_5.1__g84a27a5.shasta /etc/alternatives/cray-xpmem
+    echo "/opt/cray/xpmem/default/lib64" >/etc/ld.so.conf.d/cray-xpmem.conf
+    chmod 644 /etc/ld.so.conf.d/cray-xpmem.conf
     
-    # Put links for pals
-    ln -s /opt/cray/pe/pals/1.2.12 /opt/cray/pe/pals/default
-    ln -s /opt/cray/pe/pals/default/lib/libpals.so       /opt/cray/pe/lib64/libpals.so
-    ln -s /opt/cray/pe/pals/default/lib/libpals.so.0     /opt/cray/pe/lib64/libpals.so.0
-    ln -s /opt/cray/pe/pals/default/lib/libpals.so.0.0.0 /opt/cray/pe/lib64/libpals.so.0.0.0
+    # Put links for pals and put in the search path for shared libraries
+    ln -s /opt/cray/pals/1.3.2 /opt/cray/pals/default
+    echo "/opt/cray/pals/default/lib" >/etc/ld.so.conf.d/cray-pals.conf
+    chmod 644 /etc/ld.so.conf.d/cray-pals.conf
     
     # Tweak the ROCm and AMD modules
     sed -e 's|{local_rocm_version}|{local_c1_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/core/rocm/{local_c1_rocm_version}.lua
@@ -197,8 +208,14 @@ From: {local_sif}
     ln -s /opt/rocm-{local_c1_rocm_version} /etc/alternatives/rocm
     ln -s /etc/alternatives/rocm /opt/rocm
     
+    # Rebuild the cache for ld.so as we have added several conf files in /etc/ld.so.conf.d.
+    /sbin/ldconfig
+    
     # No longer needed, we prefer to bind the system one to always be up-to-date.
     /bin/rm -rf /etc/slurm
+    
+    # No longer needed, we'll bind that one when running to be sure to always have the system version.
+    /bin/rm -rf /opt/cray/xpmem
 
 """.replace( '$', '\\$' )
 
@@ -545,7 +562,7 @@ local_singularity_bind = ','.join( [ # Add bindings here!
     '/opt/cray/xpmem',                                             # echo $(dirname `pkg-config --variable=prefix cray-xpmem`)
     '/usr/lib64/pkgconfig/cray-xpmem.pc',                          # echo "$(pkg-config --variable=pcfiledir cray-xpmem)/cray-xpmem.pc"
       
-    # Do we need PALs on LUMI? Likely not
+    # Do we need PALs on LUMI? Yes, as several libraries link it even though it is probably not used.
     # echo $(dirname `module --redirect show cray-pals | grep PATH | awk -F'"' '{ print $4 }' | tail -n 1`)
     # '/usr/lib64/libjansson.so.4', 
     
