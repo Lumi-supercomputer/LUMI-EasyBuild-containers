@@ -177,13 +177,14 @@ not be passed to others.
     -   Create a tar-file `rocm-6.3.4.tar` in `/opt`: 
 
         ```
-        tar -xf rocm-6.3.4.tar rocm-6.3.5
+        tar -cf $WORKDIR/rocm-6.3.4.tar rocm-6.3.4
         ```
 
     -   Outside the container:
   
         ```
         umask 002
+        cd $WORKDIR
         mkdir tmp && cd tmp
         tar -xf ../rocm-6.3.4.tar
         mksquashfs rocm-6.3.4 ../rocm-6.3.4.squashfs -processors 16

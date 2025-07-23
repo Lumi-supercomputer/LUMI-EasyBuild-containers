@@ -788,9 +788,34 @@ Other elements in the build:
     ldd $(module --redirect show libfabric | grep '"LD_LIBRARY_PATH"' | awk -F'"' '{ print $4 }')/libfabric.so | grep libcxi | awk '{print $3}'
     ```
     
--   The 25.11 containers need the xpmem libraries and module from the system which
+-   The 25.03 containers need the xpmem libraries and module from the system which
     is done through bind mounts (could in principle replace with copying from the
     system).
+
+    The `xpmem` installation in the container is then still broken as the default is not 
+    properly set in `/etc/alternatives` and as it is not added to the system shared library
+    search path through a file in `/etc/ld.so.conf.d`, so these are also fixed in the
+    container definition.
+   
+-   There are issues with `cray-pals` on LUMI. Older versions are installed in `/opt/cray/pe`,
+    but for some reason, the version that came with 24.03 is actually installed in `/opt/cray`,
+    but there the modulefiles are not found.
+    
+    It is also missing in the container, yet used by some other libraries from the 
+    PE.
+    
+    Rather than binding from the system as we do for `xpmem`, we chose to copy 
+    the libraries to the container. We kept the installation in `/opt/cray/pals` as otherwise the 
+    modulefiles would not be correct, but copied the modulefiles to the proper locations in
+    `/opt/cray/pe` rather than trying to adapt the `MODULEPATH`.
+    
+    Rather than using the trick with the links in `/opt/cray/pe/lib64`, it gets its own
+    file in `/etc/ld.so.conf.d` as is the case on LUMI (where the links also exist 
+    though but point to an older version of the library).
+    
+    Moreover, libpals requires a newer version of libjansson then we get with `zypper`
+    using the OpenSUSE repositories, so we copy it from the system and create the 
+    necessary links.
 
 -   ROCm: Either bound from a SquashFS file, installed from tar files or installed
     via `zyppr`, depending on the container.
@@ -817,5 +842,3 @@ Other elements in the build:
     for different versions of the programming environment. We've tried to catch everything
     which depends on the version of the PE in variables in the EasyConfig, defined 
     just above the sanity check commands (currently only 1).
-
-   
