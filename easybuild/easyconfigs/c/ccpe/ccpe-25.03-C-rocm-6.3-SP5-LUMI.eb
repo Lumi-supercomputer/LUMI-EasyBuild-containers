@@ -181,12 +181,14 @@ From: {local_sif}
     # Install ROCm 6.2.4 as a backup version
     zypper --non-interactive --no-gpg-checks --no-refresh install https://repo.radeon.com/amdgpu-install/6.2.4/sle/15.5/amdgpu-install-6.2.60204-1.noarch.rpm
     zypper --non-interactive --gpg-auto-import-keys refresh
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage amdgpu-dkms rocm
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage amdgpu-dkms rocm6.2.4
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage rocm-llvm-devel6.2.4 rocm-cmake6.2.4
     
     # Install ROCm 6.3.4 as the main version
     zypper --non-interactive --no-gpg-checks --no-refresh install https://repo.radeon.com/amdgpu-install/6.3.4/sle/15.5/amdgpu-install-6.3.60304-1.noarch.rpm
     zypper --non-interactive --gpg-auto-import-keys refresh
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage amdgpu-dkms rocm
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage amdgpu-dkms rocm6.3.4
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage rocm-llvm-devel6.3.4 rocm-cmake6.3.4
     
     # Tweak Lmod to use a different cache directory
     sed -e 's|.cache/lmod|.cache/lmod/ccpe-{local_ccpe_version}|' -i /opt/cray/pe/lmod/lmod/libexec/myGlobals.lua
