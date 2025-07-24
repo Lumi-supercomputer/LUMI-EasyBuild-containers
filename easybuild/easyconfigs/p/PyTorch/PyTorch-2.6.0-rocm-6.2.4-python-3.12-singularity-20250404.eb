@@ -4,8 +4,8 @@
 #DOC xformers 0.0.30+a0a401e4.d20250322 and vllm 0.7.2.post2+rocm624, on Python 3.12 and ROCm 6.2.3.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
 #DOC
-#DOC This version works with $WITH_CONDA, $WITH_VENV and $WITH_CONDA_VENV for initialisation of the 
-#DOC conda / Python venv / or both environments respectively.
+#DOC This version also includes a pre-set virtual environment, but the module together with the 
+#DOC container to all the initialisations, so $WITH_CONDA, $WITH_VENV, etc., are not needed.
 
 easyblock = 'MakeCp'
 
@@ -61,6 +61,7 @@ There are also a number of environment variables available inside the container.
 These are not strictly needed though as the module already ensures that all
 necessary environment variables are set to activate the Conda environment in
 the container and on top of that the virtual environment for additional packages.
+They are there for compatibility with scripts for older versions of the containers.
 
 *   WITH_CONDA: Command to execute to activate the Conda environment used for 
     the Python installation.
@@ -285,9 +286,6 @@ source /user-software/venv/{local_conda_env}/bin/activate
 local_runscript_python_simple="""
 #!/bin/bash -e
 
-# Start conda environment inside the container
-# eval "$WITH_CONDA_VENV"
-
 # Run application
 python "$@"
 
@@ -376,7 +374,10 @@ if __name__ == '__main__':
 # Now install does scripts and do further preparations of the container.
 #
 
-local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' + \
+#local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' + \
+#                         '%(installdir)s/runscripts:/runscripts,' + \
+#                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
+local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,' + \
                          '%(installdir)s/runscripts:/runscripts,' + \
                          '/pfs,/scratch,/projappl,/project,/flash,/appl'
 
@@ -482,25 +483,26 @@ modextravars = {
     'RUNSCRIPTSPYTORCH':                '%(installdir)s/runscripts',
     #'SINGULARITY_BIND':                local_singularity_bind,
     #
-    # The following two lines inject the environment variables WITH_VENV and WITH_CONDA_VENV into
-    # the container that have a similar function as WITH_CONDA: the first one is the command to
-    # activate the Python virtrual environment defined by default and the second one activates
-    # both the conda and Python virtual environments, with the latter environment built on top of the
-    # former.
+    # In containers made before 2025, we had the WITH_CONDA environment variable set in the container
+    # with the commands to activate the conda environment, and the module defined the WITH_VENV
+    # environment variable with the commands to activate the preset virtual environment and
+    # WITH_CONDA_VENV to do both. As the combination of container and module now do that work,
+    # these are no longer needed, but for compatibility with older scripts we let them execute 
+    # dummy commands.
     #
-    'SINGULARITYENV_WITH_VENV':         f'source /user-software/venv/{local_conda_env}/bin/activate',
-    'SINGULARITYENV_WITH_CONDA_VENV':   'source /runscripts/init-conda-venv',
+    'SINGULARITYENV_WITH_VENV':         'true',
+    'SINGULARITYENV_WITH_CONDA_VENV':   'true',
     #
-    # The following lines inject environment variables into the container that
-    # basically have the same effect as activating the conda environment and Python
-    # virtual environment. When these are defined in the module, WITH_CONDA, WITH_VENV or
-    # WITGH_CONDA_VENV are not really needed.
+    # The following lines have the same effect as activating the Python virtual environment
+    # with the script created by venv. The conda environment is already correctly initialised
+    # through settings in the container /.singularity.d/env/10-docker2singularity.sh script.
     #
-    'SINGULARITYENV_PREPEND_PATH':      '/runscripts:/user-software/venv/pytorch/bin:/opt/miniconda3/envs/pytorch/bin:/opt/miniconda3/condabin',
-    'SINGULARITYENV_CONDA_DEFAULT_ENV': 'pytorch',
-    'SINGULARITYENV_CONDA_EXE':         '/opt/miniconda3/bin/conda',
-    'SINGULARITYENV_CONDA_PREFIX':      '/opt/miniconda3/envs/pytorch',
-    #'SINGULARITYENV_CONDA_PYTHON_EXE':  '/opt/miniconda3/bin/python',  # This Python should not be used as-is. Instead the wrapper from the Python venv should be used.
+    #'SINGULARITYENV_PREPEND_PATH':      '/runscripts:/user-software/venv/pytorch/bin:/opt/miniconda3/envs/pytorch/bin:/opt/miniconda3/condabin',
+    'SINGULARITYENV_PREPEND_PATH':      '/runscripts:/user-software/venv/pytorch/bin',
+    #'SINGULARITYENV_CONDA_DEFAULT_ENV': 'pytorch',                      # Set in the container already
+    #'SINGULARITYENV_CONDA_EXE':         '/opt/miniconda3/bin/conda',    # Now set in the container already
+    #'SINGULARITYENV_CONDA_PREFIX':      '/opt/miniconda3/envs/pytorch', # Now set in the container already
+    #'SINGULARITYENV_CONDA_PYTHON_EXE':  '/opt/miniconda3/bin/python',   # This Python should not be used as-is. Instead the wrapper from the Python venv should be used.
     'SINGULARITYENV_VIRTUAL_ENV':       '/user-software/venv/pytorch',
     # Typical NCCL environment variables
     'NCCL_SOCKET_IFNAME':               'hsn',

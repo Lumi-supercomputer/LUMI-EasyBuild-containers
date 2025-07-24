@@ -483,17 +483,16 @@ modextravars = {
     'RUNSCRIPTSPYTORCH':                '%(installdir)s/runscripts',
     #'SINGULARITY_BIND':                local_singularity_bind,
     #
-    # The following two lines inject the environment variables WITH_VENV and WITH_CONDA_VENV into
-    # the container that have a similar function as WITH_CONDA: the first one is the command to
-    # activate the Python virtrual environment defined by default and the second one activates
-    # both the conda and Python virtual environments, with the latter environment built on top of the
-    # former.
+    # In containers made before 2025, we had the WITH_CONDA environment variable set in the container
+    # with the commands to activate the conda environment, and the module defined the WITH_VENV
+    # environment variable with the commands to activate the preset virtual environment and
+    # WITH_CONDA_VENV to do both. As the combination of container and module now do that work,
+    # these are no longer needed, but for compatibility with older scripts we let them execute 
+    # dummy commands.
     #
-    #'SINGULARITYENV_WITH_VENV':         f'source /user-software/venv/{local_conda_env}/bin/activate',
     'SINGULARITYENV_WITH_VENV':         'true',
-    #'SINGULARITYENV_WITH_CONDA_VENV':   'source /runscripts/init-conda-venv',
     'SINGULARITYENV_WITH_CONDA_VENV':   'true',
-    #
+   #
     # The following lines have the same effect as activating the Python virtual environment
     # with the script created by venv. The conda environment is already correctly initialised
     # through settings in the container /.singularity.d/env/10-docker2singularity.sh script.

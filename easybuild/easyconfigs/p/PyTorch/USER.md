@@ -100,7 +100,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
     -   `unmake-squashfs`: Unpack the user-software.squashfs file into the user-software
         subdirectory of $CONTAINERROOT to enable installing additional packages.
         
-    From the PyTorch 2.6.0 modules onwards, it also creates wrapper scripts for the
+5.  From the PyTorch 2.6.0 modules onwards, it also creates wrapper scripts for the
     `python`and `pip` commands (including the commands with major and major.minor Python
     version in their name), and a number of other commands including `accelerate`, 
     `huggingface-cli`, `ray` and `torchrun`. These wrappers should work in the same 
@@ -111,12 +111,21 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
     file system.
             
 The container uses a miniconda environment in which Python and its packages are installed.
-That environment needs to be activated in the container when running, which can be done
-with the command that is available in the container as the environment variable
-`WITH_CONDA` (which for this container it is
-`source /opt/miniconda3/bin/activate pytorch`).
+That environment needs to be activated in the container when running. 
 
-From the 20240315 version onwards, EasyBuild will already initialise the Python virtual
+1.  For the PyTorch 2.6 containers, the activation is done by singularity startup
+    procedure and users don't need to do anything.
+    
+2.  For older containers from the 20240315 versions onwards, the EasyBuild module basically
+    does all the important work for the Conda initialisation by injecting the necessary PATH
+    changes and environment variables in the container. However, when using the containers
+    without the EasyBuild module, one has to initialise the conda environment explicitly
+    by executing the commands in the environment variable WITH_CONDA.
+    
+3.  In even older containers, users have to explicitly activate the conda environment
+    by executing the commands in the environment variable WITH_CONDA.
+
+From the 20240315 version onwards, EasyBuild will also activate the Python virtual
 environment `pytorch`. Inside the container, the virtual environment is available in
 `/user-software/venv` while outside the container the files can be found in 
 `$CONTAINERROOT/user-software/venv` (if this directory has not been removed after creating
@@ -150,9 +159,52 @@ if your user category has no access to `standard-g`.
 
 ### List the Python packages in the container
 
+#### Containers from PyTorch 2.6 on
+
+It is not needed to start a singularity shell 
+or explicitly call `singularity exec`, as
+
+```
+module load PyTorch/2.7.0-rocm-6.2.4-python-3.12-singularity-20250527
+pip list
+```
+
+can be executed directly from a system bash shell as long as the PyTorch module is loaded
+thanks to a wrapper script that takes care of starting `pip` in the container.
+However, the approach below still works.
+
+
+#### Other containers from 20240315 on
+
+For the containers from version 20240315 on, the `$WITH_CONDA` is not needed.
+In an interactive session, you still need to load the module and go into the container:
+
+```
+module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
+start-shell
+```
+
+(where we use the wrapper script `start-shell`, equivalent to `singularity shell $SIF`)
+but once in the container, at the `Singularity>` prompt, all that is needed is
+
+```
+pip list
+```
+
+Without an interactive session in the container, all that is now needed is
+
+```
+module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
+singularity exec $SIF pip list
+```
+
+as the `pip` command is in the search path set up by the container and the 
+container module.
+
+
 #### Containers up to and including the 20240209 ones
 
-For the containers up to the 20240209 ones, this example also illustrated how the
+For the containers up to the 20240209 ones, this example also illustrates how the
 `WITH_CONDA` environment variable should be used.
 The example can be run in an interactive session and works even on the login nodes.
 
@@ -185,60 +237,22 @@ not yet defined. To use the container it also doesn't matter which version of th
 LUMI module is loaded, and in fact, loading CrayEnv would work as well.
 
 
-#### Containers from 20240315 on
-
-For the containers from version 20240315 on, the `$WITH_CONDA` is no longer needed.
-In an interactive session, you still need to load the module and go into the container:
-
-```
-module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
-start-shell
-```
-
-(where we use the wrapper script `start-shell`, equivalent to `singularity shell $SIF`)
-but once in the container, at the `Singularity>` prompt, all that is needed is
-
-```
-pip list
-```
-
-Without an interactive session in the container, all that is now needed is
-
-```
-module load LUMI PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240923
-singularity exec $SIF pip list
-```
-
-as the `pip` command is already in the search path.
-
-
-#### Containers from PyTorch 2.6 on
-
-Listing packages is now even simpler. It is not even needed to start a singularity shell 
-or explicitly call `singularity exec`, as
-
-```
-pip list
-```
-
-can be executed directly from a system bash shell as long as the PyTorch module is loaded
-thanks to a wrapper script that takes care of starting `pip` in the container.
-However, the above approach still works.
-
-
 ### Executing Python code in the container (single task)
 
-#### Containers up to and including the 20240209 ones
+As an example, we'll import the `torch` package and request the number of GPUs 
+it sees.
 
-The wrapper script `conda-python-single` which can be found in the `/runscripts` directory
-in the container, takes care of initialising the Conda environment and then passes its
-arguments to the `python` command. E.g., the example below will import the `torch`
-package in Python and then show the number of GPUs available to it:
+#### Containers for PyTorch 2.6.0 and later
+
+For these containers, one can still use the `conda-python-simple` wrapper script presented 
+below for the older containers, but another option is to use
+the `python` wrapper script provided by the container module so it is not needed
+to call `singularity exec` explicitly:
 
 ```
 salloc -N1 -pstandard-g -t 10:00
-module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240209
-srun -N1 -n1 --gpus 8 singularity exec $SIF conda-python-simple \
+module load LUMI PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
+srun -N1 -n1 --gpus 8 python \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 exit
 ```
@@ -246,19 +260,15 @@ exit
 This command will start Python and run PyTorch on a single CPU core with access to
 all 8 GPUs.
 
-??? Note "Container modules installed before March 9, 2024"
-    In these versions of the container module, `conda-python-simple` is not yet in
-    the search path for executables, and you need to modify the job script to use
-    `/runscripts/conda-python-simple` instead.
-
 
 #### Containers from 20240315 on
 
 As the Conda environment and Python virtual environment are properly initialised by the
-module, the `conda-python-simple` script is not even needed anymore (though still provided
-for compatibility with job scripts developed before those containers became available).
+module, the `/runscripts/conda-python-simple` script provided in older modules can be used
+(it is kept for now for compatibility reasons) but it is easier to directly execute
+the `python` command in the container.
 
-The following commands now work just as well:
+The following commands will work just as well:
 
 ```
 salloc -N1 -pstandard-g -t 10:00
@@ -269,18 +279,24 @@ exit
 ```
 
 
-#### Containers for PyTorch 2.6.0 and later
+#### Containers up to and including the 20240209 ones
 
-For these containers, one can still use the above approach, but another option is to use
-the `python` wrapper script provided by the container module, which reduces work even further:
+The wrapper script `conda-python-single` which can be found in the `/runscripts` directory
+in the container, takes care of initialising the Conda environment and then passes its
+arguments to the `python` command. 
 
 ```
 salloc -N1 -pstandard-g -t 10:00
-module load LUMI PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
-srun -N1 -n1 --gpus 8 python \
+module load LUMI PyTorch/2.2.0-rocm-5.6.1-python-3.10-singularity-20240209
+srun -N1 -n1 --gpus 8 singularity exec $SIF conda-python-simple \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 exit
 ```
+
+??? Note "Container modules installed before March 9, 2024"
+    In these versions of the container module, `conda-python-simple` is not yet in
+    the search path for executables, and you need to modify the job script to use
+    `/runscripts/conda-python-simple` instead.
 
 
 ### Distributed learning example
@@ -804,7 +820,7 @@ newer versions of the compilers also, but they then include the major version in
 the software in most of the AI containers is compiled during the build phase of the compiler
 to better adapt them to LUMI. 
 
-The Conda-installed compilers, are not available in most, if not all containers.
+The Conda-installed compilers, are available in most, if not all containers.
 
 Usually it is possible to tell the `pip install` process to tell which compiler to use by
 setting environment variables, e.g., `CC` for the C compiler and `CXX` for the C++ compiler.
@@ -862,7 +878,12 @@ and the bindings you need to access the files you want to use from `/scratch`, `
 -B /pfs,/scratch,/projappl,/project,/flash,/appl
 ```
 
-Note that the list recommended bindings may change after a system update.
+Note that the list recommended bindings may change after a system update or between containers. E.g.,
+the containers provided since early 2025 already contain their own `libcxi.so.1` but the container
+is configured in such a way that binding the one from the system will do no harm. Some containers
+in the past also required binding `/usr/lib64/libjansson.so.4` but there is now a version in the
+newer containers, and overwriting that version may in fact create incompatibilities with other 
+software in the container.
 
 If you want to quickly check what Python packages are available in the containers in those directories,
 you don't need all the bind points and a quick
