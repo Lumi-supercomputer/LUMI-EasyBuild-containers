@@ -8,8 +8,10 @@ doing distributed AI, and a suitable version of ROCm for the version of JAX.
 to use newer version of ROCm than the drivers on LUMI support, so there is no
 guarantee that this container will work for you (even though it did pass some
 tests we did), and there might be problems that cannot be fixed by the
-support team. This is software for users with a development spirit, not
-for users who expect something that simply and always works.**
+support team. JAX is software for users with a development spirit, not
+for users who expect something that simply and always works, and this is
+reflected in its 0.x version numbers. LUST cannot offer more than a best
+effort support and has no link to the JAX developers.**
 
 
 ## Use via EasyBuild-generated modules
@@ -51,6 +53,12 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
         with the arguments of `conda-python-simple`. It can be used, e.g., to run commands
         through Python that utilise a single task but all GPUs.
         
+        Note that in the 2025 and later JAX containers this script doesn't make much 
+        sense anymore and one could just as well call `python` in the container as the 
+        activation of the conda environment used to install JAX is now fully automatic.
+        It is left in for compatibility with older containers as it may be used in some
+        3rd party documentation that we are not aware of.
+        
 4.  It creates a `bin` directory with scripts to be run outside of the container:
 
     -   `start-shell`: Serves a double purpose:
@@ -66,7 +74,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
     be used in that environment.
 
 The container uses a miniconda environment in which Python and its packages are installed.
-That environment needs to be activated in the container when running, which can be done
+Before the 2025 containers, that environment needs to be activated in the container when running, which can be done
 with the command that is available in the container as the environment variable
 `WITH_CONDA` (which for this container it is
 `source /opt/miniconda3/bin/activate jax`).
@@ -161,7 +169,11 @@ You can get access to your files on LUMI in the regular location by also using t
 -B /pfs,/scratch,/projappl,/project,/flash,/appl
 ```
 
-Note that the list recommended bindings may change after a system update or between 
-different containers. We do try to keep the EasyBuild recipes for the modules 
-up-to-date though to reflect those changes.
+Note that the list recommended bindings may change after a system update or between containers. E.g.,
+the containers provided since early 2025 already contain their own `libcxi.so.1` but the container
+is configured in such a way that binding the one from the system will do no harm. Some containers
+in the past also required binding `/usr/lib64/libjansson.so.4` but there is now a version in the
+newer containers, and overwriting that version may in fact create incompatibilities with other 
+software in the container.
+
 

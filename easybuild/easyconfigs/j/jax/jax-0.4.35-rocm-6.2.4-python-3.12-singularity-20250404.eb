@@ -88,9 +88,6 @@ fi
 local_runscript_python_simple="""
 #!/bin/bash -e
 
-# Start conda environment inside the container
-\$WITH_CONDA
-
 # Run application
 python "\$@"
 
@@ -118,9 +115,7 @@ sanity_check_commands = [
 ]
 
 modextravars = {
-    # SIF variables currently set by a function via modluafooter.
-    #'SIF':             '%(installdir)s/' + local_sif,
-    #'SIFJAX':          '%(installdir)s/' + local_sif,
+    # SIF and SIFJAX variables currently set by a function via modluafooter.
     'RUNSCRIPTS':       '%(installdir)s/runscripts',
     'RUNSCRIPTSJAX':    '%(installdir)s/runscripts',
     'SINGULARITY_BIND': '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,' +
