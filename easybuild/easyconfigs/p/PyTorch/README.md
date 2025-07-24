@@ -91,3 +91,30 @@
         singularity exec $SIF bash -c '$WITH_CONDA ; python -m xformers.info'
         ```
         
+## EasyBuild
+
+Incomplete!
+
+### Changes made for the 20250410 PyTorch container
+
+Some of those changes were likely overdue!
+
+-   All variables to initilise the conda environment correctly are already set in the 
+    container, so the module does no longer do so.
+    
+-   There is a libjansson.so in the container, so the module does no longer bind 
+    `/usr/lib64/libjansson.so.4`. This may turn out to be an issue though as the 
+    libjansson.so in the container is an older version than the one on LUMI, so we
+    may need to overwrite it with a bind mount.
+    
+    NOTE: This probably doesn't matter as the library that links to it is recompiled
+    and in the container?
+
+-   TODO: Check with Samuel if we still need to bind cxi as there is a libfabric in 
+    the container that links to a different libcxi.
+
+
+### Pytorch 20250527 container
+
+-   Basically identical setup as the 20250410 containers.
+
