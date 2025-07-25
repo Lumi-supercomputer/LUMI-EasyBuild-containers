@@ -95,7 +95,7 @@
 
 Incomplete!
 
-### Changes made for the 20250410 PyTorch container
+### Changes made for the 20250404 PyTorch container
 
 Some of those changes were likely overdue!
 
@@ -109,12 +109,14 @@ Some of those changes were likely overdue!
     
     NOTE: This probably doesn't matter as the library that links to it is recompiled
     and in the container?
+    
+-   In late July 2025 the `list-packages` script used by CSC was also added to the
+    container, even though it is basically just a `pip list` and could even be implemented
+    using the `pip` wrapper script.
 
 -   TODO: Check with Samuel if we still need to bind cxi as there is a libfabric in 
     the container that links to a different libcxi.
 
 
-### Pytorch 20250527 container
 
--   Basically identical setup as the 20250410 containers.
 

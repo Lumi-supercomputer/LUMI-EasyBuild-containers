@@ -108,7 +108,7 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
     and the [CSC machine learning guide](https://docs.csc.fi/support/tutorials/ml-guide/).
     These wrappers still support the other features of this module, and in particular the way
     extra packages in a virtual environment can be managed to reduce the load on the 
-    file system.
+    file system. The `list-packages` script is also supported (since late July 2025).
             
 The container uses a miniconda environment in which Python and its packages are installed.
 That environment needs to be activated in the container when running. 
