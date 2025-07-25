@@ -16,6 +16,18 @@ effort support and has no link to the JAX developers.**
 
 ## Use via EasyBuild-generated modules
 
+!!! Note "Changes to the EasyConfigs in late July 2025"
+
+    The EasyConfigs for the jax containers for the 2025 versions received a major 
+    update at the end of July. Instructions below are only valid if you (rei)installed
+    the container afterwards.
+    
+    Re-installing is tricky as by default EasyBuild will take the already installed
+    version of the EasyConfig, so before re-installing, change your directory to the
+    directory containing the EasyConfigs, which is 
+    `/appl/local/containers/LUMI-EasyBuild-containers/easybuild/easyconfigs/j/jax`.
+    
+
 The EasyBuild installation with the EasyConfigs mentioned below will do four things:
 
 1.  It will copy the container to your own file space. We realise containers can be
@@ -59,6 +71,9 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
         It is left in for compatibility with older containers as it may be used in some
         3rd party documentation that we are not aware of.
         
+    From the 2025 containers onwards, the directory with runscripts is in the PATH in 
+    the container if the module is loaded before entering the container.
+        
 4.  It creates a `bin` directory with scripts to be run outside of the container:
 
     -   `start-shell`: Serves a double purpose:
@@ -72,6 +87,12 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
     The `bin` directory is not mounted in the container, but if you would, the 
     scripts would recognise this and work or print a message that they cannot 
     be used in that environment.
+
+5.  From the 2025 containers onwards, it also creates wrapper scripts for the
+    `python`and `pip` commands (including the commands with major and major.minor Python
+    version in their name), and also has a `list-packages` script. These scripts should work in the same 
+    way as those in the CSC local software stacks as documented in the [CSC PyTorch documentation](https://docs.csc.fi/apps/jax/)
+    and the [CSC machine learning guide](https://docs.csc.fi/support/tutorials/ml-guide/).
 
 The container uses a miniconda environment in which Python and its packages are installed.
 Before the 2025 containers, that environment needs to be activated in the container when running, which can be done
