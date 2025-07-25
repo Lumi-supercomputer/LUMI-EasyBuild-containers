@@ -109,6 +109,15 @@ The EasyBuild installation with the EasyConfigs mentioned below will do three or
     These wrappers still support the other features of this module, and in particular the way
     extra packages in a virtual environment can be managed to reduce the load on the 
     file system. The `list-packages` script is also supported (since late July 2025).
+    
+    Note though that there is one important difference with the way the CSC scripts 
+    work: Our module works with a predefined virtual environment which is in a different
+    place in the file system in the container and outside the container, but can also 
+    be squashed into a SquashFS file to avoid killing the file system when running a 
+    big virtual environment. Moreover, that environment is also automatically activated
+    when loading the module. So creating another virtual environment may conflict. If this
+    would be a real issue, contace LUMI support and we may look for a custom solution
+    (e.g., by telling you how to install separate modules for each virtual environment).
             
 The container uses a miniconda environment in which Python and its packages are installed.
 That environment needs to be activated in the container when running. 

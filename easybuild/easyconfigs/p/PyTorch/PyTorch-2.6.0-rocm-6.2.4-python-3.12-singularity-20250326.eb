@@ -189,18 +189,23 @@ then
     exit
 fi
 
-REAL_PYTHON="${BASH_SOURCE[0]}"
-EXEC_BIN=$(basename "$0")
+#REAL_PYTHON="${BASH_SOURCE[0]}"  # Full path + name of the file being executed, which can be the symbolic link.
+EXEC_BIN=$(basename "$0")         # Command executed without the path, so python or the name of the symbolic link.
 
 if [ -d /.singularity.d/ ]; then
-    # In a singularity container, just in case a user would add this to the path.
-    exec -a $REAL_PYTHON $EXEC_BIN "$@"
+    1>&2 echo "These wrapper scripts are not meant to be executed in a container and will lead to infinite loops."
+    exit 1
 else
-    # The second variant comes from CSC, might be better if we try to mimic
-    # the behaviour of their wrapper, but then we need to set PYTHONPATH
-    # as Python doesn't notice it is starting from the virtual environment.
+    # Note: The CSC script starts the command in the container with
+    # singularity exec $SIFPYTORCH bash -c "exec -a $REAL_PYTHON $EXEC_BIN $( test $# -eq 0 || printf " %q" "$@" )"
+    # where "exec -a $REAL_PYTHON $EXEC_BIN" executes $EXE_BIN but setting arg[0] to $REAL_PYTHON.
+    # This however breaks the working of the virtual environment, likely # because of the overwriting
+    # of argv[0] so that Python can't find the correct path from where it was started. This is because
+    # of the way the EasyBuild modules work with virtual environments. They are not seen in the container
+    # in their place in the file system, but in /user-software. We have done this to be able to squash
+    # that whole directory structure in a SquashFS file mounted in the container to reduce the pressure
+    # that big virtual environments cause on the filesystem.
     singularity exec $SIFPYTORCH $EXEC_BIN "$@"
-    #singularity exec $SIFPYTORCH bash -c "exec -a $REAL_PYTHON $EXEC_BIN $( test $# -eq 0 || printf " %q" "$@" )"
 fi
 """.replace( '$', '\\$' )
 

@@ -121,6 +121,16 @@ Inside the container, the virtual environment is available in
 `$CONTAINERROOT/user-software/venv` (if this directory has not been removed after creating
 a SquashFS file from it for better file system performance). You can also use the 
 `/user-software` subdirectory in the container to install other software through other methods.
+  
+Note though that when using our CSC-like python and pip wrapper scripts,
+there is one important difference with the way the CSC scripts 
+work: Our module works with a predefined virtual environment which is in a different
+place in the file system in the container and outside the container, but can also 
+be squashed into a SquashFS file to avoid killing the file system when running a 
+big virtual environment. Moreover, that environment is also automatically activated
+when loading the module. So creating another virtual environment may conflict. If this
+would be a real issue, contace LUMI support and we may look for a custom solution
+(e.g., by telling you how to install separate modules for each virtual environment).
 
 
 ### Initialising the Conda environment in the pre-2025 containers
