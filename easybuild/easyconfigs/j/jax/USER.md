@@ -58,6 +58,15 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
     -   `RUNSCRIPTS` and `RUNSCRIPTSJAX` contain the full path of the directory
         containing some sample run scripts that can be used to run software in the 
         container, or as inspiration for your own variants.
+
+    The 2025 container modules installed after the end of July, 2025 also define 
+    `SINGULARITYENV_PREPEND_PATH` in a way that ensures that the `/runscripts` 
+    subdirectory in the container will be in the search path in the container.
+
+    These containers also offer support for a virtual environment and define
+    a few other `SINGULARITYENV_*` environment variables that inject environment variables
+    in the container that are equivalent to those created by the activate script for 
+    the Python virtual environment.
         
 3.  It creates the $RUNSCRIPTS directory with scripts to be run in the container:
 
@@ -84,6 +93,17 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
         -   With arguments it simply runs a shell in the container, but the Conda 
             environment will not be activated.
             
+    For the 2025 containers there is also support for a pre-initialised virtual environment
+    that works in the same way as in the [PyTorch modules](../../p/PyTorch/index.md).
+    This comes with two extra scripts in the `bin` subdirectory:
+    
+    -   `make-squashfs`: Make the user-software.squashfs file that would then be mounted
+        in the container after reloading the module. This will enhance performance if
+        the extra installation in user-software contains a lot of files.
+
+    -   `unmake-squashfs`: Unpack the user-software.squashfs file into the user-software
+        subdirectory of $CONTAINERROOT to enable installing additional packages.
+            
     The `bin` directory is not mounted in the container, but if you would, the 
     scripts would recognise this and work or print a message that they cannot 
     be used in that environment.
@@ -93,6 +113,17 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
     version in their name), and also has a `list-packages` script. These scripts should work in the same 
     way as those in the CSC local software stacks as documented in the [CSC PyTorch documentation](https://docs.csc.fi/apps/jax/)
     and the [CSC machine learning guide](https://docs.csc.fi/support/tutorials/ml-guide/).
+
+From the 2025 container versions onwards installed after the end of July 2025, 
+EasyBuild will also activate the Python virtual environment `jax`. 
+Inside the container, the virtual environment is available in
+`/user-software/venv` while outside the container the files can be found in 
+`$CONTAINERROOT/user-software/venv` (if this directory has not been removed after creating
+a SquashFS file from it for better file system performance). You can also use the 
+`/user-software` subdirectory in the container to install other software through other methods.
+
+
+### Initialising the Conda environment in the pre-2025 containers
 
 The container uses a miniconda environment in which Python and its packages are installed.
 Before the 2025 containers, that environment needs to be activated in the container when running, which can be done
@@ -141,7 +172,14 @@ srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/conda-python-simple \
 ```
 
 
-### Installation
+### Virtual environment support
+
+This support is implemented in the same way as in the PyTorch containers, so we refer 
+to the documentation in the
+[PyTorch page](../../p/PyTorch/index.md#extending-the-containers-with-virtual-environment-support).
+
+
+### Installation with EasyBuild
 
 To install the container with EasyBuild, follow the instructions in the
 [EasyBuild section of the LUMI documentation, section "Software"](https://docs.lumi-supercomputer.eu/software/installing/easybuild/),

@@ -250,6 +250,13 @@ python "$@"
 # Installing mostly done in postcmds as we have no EasyBlock to easily work with the container.
 #
 
+#local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' + \
+#                         '%(installdir)s/runscripts:/runscripts,' + \
+#                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
+local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,' + \
+                         '%(installdir)s/runscripts:/runscripts,' + \
+                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
+
 postinstallcmds = [
     #
     # Commands in bin
@@ -304,24 +311,41 @@ sanity_check_commands = [
     'list-packages',
     'pip list',
     f'pip{local_c_python_m}  list',
-    'python -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"',
-    f'python{local_c_python_m} -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"',
-    f'python{local_c_python_mm} -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"',
+    # Check python wrapper script and reported version
+    ('echo "Testing Python wrapper script and version" ; '
+    f'python --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
+    # Check pythonMAJOR wrapper script and reported version
+    (f'echo "Testing python{local_c_python_m} wrapper script and version" ; '
+    f'python{local_c_python_m} --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
+    # Check pythonMAJOR.MINOR wrapper script and reported version
+    (f'echo "Testing python{local_c_python_mm} wrapper script and version" ; '
+    f'python{local_c_python_mm} --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
+    # Check the JAX version
+    (f'echo "Testing python wrapper script and JAX version (expected {local_c_jax_version})" ; '
+    f'python -c \'import jax ; print(jax.__version__)\' | grep -q {local_c_jax_version}'),
+    # Check pip and numpy version
+    (f'echo "Testing pip wrapper script and numpy version (expected {local_c_NumPy_version})" ; '
+    f'pip freeze | grep numpy | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_NumPy_version}"'),    
+    # Check pipMAJOR and scipy version
+    (f'echo "Testing pip{local_c_python_m} wrapper script and SciPy version (expected {local_c_SciPy_version})" ; '
+    f'pip{local_c_python_m} freeze | grep scipy | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_SciPy_version}"'),    
 ]
 
 modextravars = {
     # SIF and SIFJAX variables currently set by a function via modluafooter.
+    'CONTAINERROOT':                '%(installdir)s',
     'RUNSCRIPTS':                   '%(installdir)s/runscripts',
     'RUNSCRIPTSJAX':                '%(installdir)s/runscripts',
-    'SINGULARITYENV_PREPEND_PATH':  '/runscripts',
-    'SINGULARITY_BIND':             '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,' +
-                                    '%(installdir)s/runscripts:/runscripts,' + 
-                                    '/pfs,/scratch,/projappl,/project,/flash,/appl'
+    'SINGULARITYENV_PREPEND_PATH':  f'/runscripts::/user-software/venv/{local_conda_env}/bin',
+    'SINGULARITYENV_VIRTUAL_ENV':   f'/user-software/venv/{local_conda_env}',
+    # Typical NCCL environment variables
+    'NCCL_SOCKET_IFNAME':               'hsn',
+    'NCCL_NET_GDR_LEVEL':               '3',  # Not really needed anymore for ROCm 6.2 as this is now the default
 }
 
 modluafooter = f"""
 -- Call a routine to set the various environment variables.
-create_container_vars( '{local_sif}', '%(name)s', '%(installdir)s' )
+create_container_vars( '{local_sif}', '%(name)s', '%(installdir)s', '{local_singularity_bind}' )
 """
 
 moduleclass = 'devel'
