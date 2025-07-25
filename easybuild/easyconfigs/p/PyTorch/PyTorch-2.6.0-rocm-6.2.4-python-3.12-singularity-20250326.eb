@@ -380,7 +380,7 @@ export NCCL_NET_GDR_LEVEL=3    # Not really needed anymore for ROCm 6.2 as this 
 export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
 
 # Report affinity to check 
-echo "Rank $SLURM_PROCID --> $(taskset -p \$\$); GPU $ROCR_VISIBLE_DEVICES"
+echo "Rank $SLURM_PROCID --> $(taskset -p $$); GPU $ROCR_VISIBLE_DEVICES"
 
 # The usual PyTorch initialisations (also needed on NVIDIA)
 # Note that since we fix the port ID it is not possible to run, e.g., two
