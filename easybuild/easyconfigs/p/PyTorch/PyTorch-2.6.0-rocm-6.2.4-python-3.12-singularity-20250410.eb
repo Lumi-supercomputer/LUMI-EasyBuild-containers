@@ -448,6 +448,10 @@ postinstallcmds = [
     'mkdir -p %(installdir)s/bin',
     f'cat >%(installdir)s/bin/start-shell <<EOF {local_bin_start_shell}EOF',
     'chmod a+x %(installdir)s/bin/start-shell',    
+    f'cat >%(installdir)s/bin/make-squashfs <<EOF {local_bin_make_squashfs}EOF',
+    'chmod a+x %(installdir)s/bin/make-squashfs',    
+    f'cat >%(installdir)s/bin/unmake-squashfs <<EOF {local_bin_unmake_squashfs}EOF',
+    'chmod a+x %(installdir)s/bin/unmake-squashfs',    
     f'cat >%(installdir)s/bin/list-packages <<EOF {local_bin_runscript_list_packages}EOF',
     'chmod a+x %(installdir)s/bin/list-packages',
     # CSC-style wrapper scripts
@@ -462,10 +466,6 @@ postinstallcmds = [
     'ln -s  ./python %(installdir)s/bin/huggingface-cli',
     'ln -s  ./python %(installdir)s/bin/ray',
     'ln -s  ./python %(installdir)s/bin/torchrun',
-    f'cat >%(installdir)s/bin/make-squashfs <<EOF {local_bin_make_squashfs}EOF',
-    'chmod a+x %(installdir)s/bin/make-squashfs',    
-    f'cat >%(installdir)s/bin/unmake-squashfs <<EOF {local_bin_unmake_squashfs}EOF',
-    'chmod a+x %(installdir)s/bin/unmake-squashfs',    
     #
     # Commands in runscripts
     #
