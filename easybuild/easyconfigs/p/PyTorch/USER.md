@@ -251,7 +251,7 @@ to call `singularity exec` explicitly:
 
 ```
 salloc -N1 -pstandard-g -t 10:00
-module load LUMI PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
+module load LUMI PyTorch/2.7.0-rocm-6.2.4-python-3.12-singularity-20250527
 srun -N1 -n1 --gpus 8 python \
     -c 'import torch; print("I have this many devices:", torch.cuda.device_count())'
 exit
@@ -375,7 +375,7 @@ wget http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz
     #SBATCH --account=project_<your_project_id>
 
     module load LUMI  # Which version doesn't matter, it is only to get the container.
-    module load PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
+    module load PyTorch/2.7.0-rocm-6.2.4-python-3.12-singularity-20250527
 
     # Optional: Inject the environment variables for NCCL debugging into the container.   
     # This will produce a lot of debug output!     
@@ -542,12 +542,12 @@ so the general principles really need to be discussed in the main LUMI docs.
 ### Manual procedure
 
 Let's demonstrate how the module can be extended by using `pip` to install packages in the virtual
-environment. We'll demonstrate using the `PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404`
+environment. We'll demonstrate using the `PyTorch/2.7.0-rocm-6.2.4-python-3.12-singularity-20250527`
 module where we assume that you have already installed this module:
 
 ``` bash
 module load CrayEnv
-module load PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
+module load PyTorch/2.7.0-rocm-6.2.4-python-3.12-singularity-20250527
 ```
 
 Let's check a directory outside the container:
@@ -629,7 +629,7 @@ and you'll get output similar to
 
 ```
 pip		              torchhd
-pip-24.3.1.dist-info  torch_hd-5.7.1.dist-info
+pip-24.3.1.dist-info  torch_hd-5.8.4.dist-info
 ```
 
 which confirms that the `torch-hd` package is indeed installed in the virtual environment.
@@ -689,7 +689,7 @@ as it can be reconstructed (except for the file dates) from the SquashFS file us
 Reload the module to let the changes take effect and go again in the container:
 
 ``` bash
-module load PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404
+module load PyTorch/2.7.0-rocm-6.2.4-python-3.12-singularity-20250527
 singularity shell $SIF
 ```
 
@@ -826,7 +826,7 @@ Usually it is possible to tell the `pip install` process to tell which compiler 
 setting environment variables, e.g., `CC` for the C compiler and `CXX` for the C++ compiler.
 
 E.g., let's try to install the [`torch-scatter`](https://pypi.org/project/torch-scatter/) in
-the `PyTorch/2.6.0-rocm-6.2.4-python-3.12-singularity-20250404` module (assuming that one is installed
+the `PyTorch/2.7.0-rocm-6.2.4-python-3.12-singularity-20250527` module (assuming that one is installed
 already and loaded).
 With this module, it is not needed to first start a shell in the container to do the installation,
 but it is still possible to first do a `start-shell` (and this is needed with prior versions).
