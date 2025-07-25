@@ -69,6 +69,10 @@ files_to_copy = [
 # Scripts for bin and and/or runscript
 #
 
+#
+# Script to start a shell in the container and/or execute commands in a shell.
+#
+
 local_bin_start_shell = """
 #!/bin/bash -e
 
@@ -126,6 +130,85 @@ fi
 
 
 #
+# Make a SquashFS file of the virtual environment.
+#
+local_bin_make_squashfs = """
+#!/bin/bash -e
+
+if [[ -d "/.singularity.d" ]] 
+then
+    # In a singularity container, just in case a user would add this to the path.
+    >&2 echo 'The make-squashfs command should not be run in the container.'
+    exit 1
+fi
+
+cd "%(installdir)s"
+
+if [[ ! -d "user-software" ]]
+then
+    >&2 echo -e 'The $CONTAINERROOT/user-software subdirectory does not exist, so there is nothing to put into the SquashFS file.'
+    exit 2
+fi
+
+if [[ -f "user-software.squashfs" ]]
+then
+    >&2 echo -e '$CONTAINERROOT/user-software.squashfs already exists. Please remove the file by' \\\\
+                '\\nhand if you are sure you wish to proceed and re-run the make-squashfs command.'
+    exit 3
+fi
+
+mksquashfs user-software user-software.squashfs -processors 1 -no-progress |& grep -v Unrecognised
+
+echo -e '\\nCreated $CONTAINERROOT/user-software.squashfs from $CONTAINERROOT/user-software.' \\\\
+        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted' \\\\
+        '\\nfrom $CONTAINERROOT/user-software.squashfs. Note that /user-software in the' \\\\
+        '\\ncontainer will then be a read-only directory.' \\\\
+        '\\nAfter reloading the module, you can also remove the $CONTAINERROOT/user-software' \\\\
+        '\\nsubdirectory if you so wish.\\n'
+
+""".replace( '$', '\\$' )
+
+
+#
+# Bin script to restore the user-software directory from a SquashFS file for further 
+# updating.
+#
+local_bin_unmake_squashfs = """
+#!/bin/bash -e
+
+if [[ -d "/.singularity.d" ]] 
+then
+    # In a singularity container, just in case a user would add this to the path.
+    >&2 echo 'The unmake-squashfs command should not be run in the container.'
+    exit 1
+fi
+
+cd "%(installdir)s"
+
+if [[ ! -f "user-software.squashfs" ]]
+then
+    >&2 echo -e '$CONTAINERROOT/user-software.squashfs does not exist so cannot uncompress it.'
+    exit 2
+fi
+
+if [[ -d "user-software" ]]
+then
+    >&2 echo -e 'The $CONTAINERROOT/user-software subdirectory already exists. Please remove this directory by hand' \\\\
+                '(rm -r $CONTAINERROOT/user-software) if you are sure you wish to proceed and re-run the unmake-squashfs command.'
+    exit 3
+fi
+
+unsquashfs -d ./user-software user-software.squashfs
+
+echo -e '\\nCreated $CONTAINERROOT/user-software subdirectory from $CONTAINERROOT/user-software.squasfs.' \\\\
+        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted from the' \\\\
+        '\\n$CONTAINERROOT/user-software directory and can now write to /user-software in the container.' \\\\
+        '\\nYou can then also remove the $CONTAINERROOT/user-software.squashfs file if you so wish.\\n'
+
+""".replace( '$', '\\$' )
+
+
+#
 # Script to list packages in a container for compatibility with the CSC approach.
 # Goes in bin to be available outside the container and runscript to also be 
 # available inside.
@@ -173,6 +256,10 @@ postinstallcmds = [
     'mkdir -p %(installdir)s/bin',
     f'cat >%(installdir)s/bin/start-shell <<EOF {local_bin_start_shell}EOF',
     'chmod a+x %(installdir)s/bin/start-shell',
+    f'cat >%(installdir)s/bin/make-squashfs <<EOF {local_bin_make_squashfs}EOF',
+    'chmod a+x %(installdir)s/bin/make-squashfs',    
+    f'cat >%(installdir)s/bin/unmake-squashfs <<EOF {local_bin_unmake_squashfs}EOF',
+    'chmod a+x %(installdir)s/bin/unmake-squashfs',    
     f'cat >%(installdir)s/bin/list-packages <<EOF {local_bin_runscript_list_packages}EOF',
     'chmod a+x %(installdir)s/bin/list-packages',
     # Python wrapper in bin with symbolic links for additional commands
@@ -191,6 +278,13 @@ postinstallcmds = [
     'chmod a+x %(installdir)s/runscripts/list-packages',
     f'cat >%(installdir)s/runscripts/conda-python-simple <<EOF {local_runscript_python_simple}EOF',
     'chmod a+x %(installdir)s/runscripts/conda-python-simple',
+    #
+    # Create the virtual environment and space for other software installations that
+    # can then be packaged.
+    #
+    'mkdir -p %(installdir)s/user-software/venv',
+    # For the next command, we don't need all the bind mounts yet, just the user-software one is enough.
+    f'singularity exec --bind %(installdir)s/user-software:/user-software %(installdir)s/{local_sif} bash -c \'cd /user-software/venv ; python -m venv --system-site-packages {local_conda_env}\'',
 ]
 
 sanity_check_paths = {
