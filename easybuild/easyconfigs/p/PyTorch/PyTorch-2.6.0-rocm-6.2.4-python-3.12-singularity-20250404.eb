@@ -4,8 +4,8 @@
 #DOC xformers 0.0.30+a0a401e4.d20250322 and vllm 0.7.2.post2+rocm624, on Python 3.12 and ROCm 6.2.3.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
 #DOC
-#DOC This version works with $WITH_CONDA, $WITH_VENV and $WITH_CONDA_VENV for initialisation of the 
-#DOC conda / Python venv / or both environments respectively.
+#DOC This version also includes a pre-set virtual environment, but the module together with the 
+#DOC container to all the initialisations, so $WITH_CONDA, $WITH_VENV, etc., are not needed.
 
 easyblock = 'MakeCp'
 
@@ -61,6 +61,7 @@ There are also a number of environment variables available inside the container.
 These are not strictly needed though as the module already ensures that all
 necessary environment variables are set to activate the Conda environment in
 the container and on top of that the virtual environment for additional packages.
+They are there for compatibility with scripts for older versions of the containers.
 
 *   WITH_CONDA: Command to execute to activate the Conda environment used for 
     the Python installation.
@@ -135,8 +136,13 @@ files_to_copy = [
 #    ([local_docker], 'share/docker-defs/')    
 ]
 
+####################################################################################################
 #
-# Code for scripts in the bin subdirectory
+# Scripts for bin and and/or runscript
+#
+
+#
+# Script to start a shell in the container and/or execute commands in a shell.
 #
 
 local_bin_start_shell = """
@@ -162,6 +168,10 @@ fi
 """.replace( '$', '\\$' )
 
 
+#
+# Python wrapper script, also works for several other commands by symlinking.
+# Based on code from CSC but adapted for the approach with this module.
+#
 local_bin_python = """
 #!/bin/bash
 #
@@ -176,26 +186,34 @@ then
     exit
 fi
 
-REAL_PYTHON="${BASH_SOURCE[0]}"
-EXEC_BIN=$(basename "$0")
+#REAL_PYTHON="${BASH_SOURCE[0]}"  # Full path + name of the file being executed, which can be the symbolic link.
+EXEC_BIN=$(basename "$0")         # Command executed without the path, so python or the name of the symbolic link.
 
 if [ -d /.singularity.d/ ]; then
-    # In a singularity container, just in case a user would add this to the path.
-    exec -a $REAL_PYTHON $EXEC_BIN "$@"
+    1>&2 echo "These wrapper scripts are not meant to be executed in a container and will lead to infinite loops."
+    exit 1
 else
-    # The second variant comes from CSC, might be better if we try to mimic
-    # the behaviour of their wrapper, but then we need to set PYTHONPATH
-    # as Python doesn't notice it is starting from the virtual environment.
+    # Note: The CSC script starts the command in the container with
+    # singularity exec $SIFPYTORCH bash -c "exec -a $REAL_PYTHON $EXEC_BIN $( test $# -eq 0 || printf " %q" "$@" )"
+    # where "exec -a $REAL_PYTHON $EXEC_BIN" executes $EXE_BIN but setting arg[0] to $REAL_PYTHON.
+    # This however breaks the working of the virtual environment, likely # because of the overwriting
+    # of argv[0] so that Python can't find the correct path from where it was started. This is because
+    # of the way the EasyBuild modules work with virtual environments. They are not seen in the container
+    # in their place in the file system, but in /user-software. We have done this to be able to squash
+    # that whole directory structure in a SquashFS file mounted in the container to reduce the pressure
+    # that big virtual environments cause on the filesystem.
     singularity exec $SIFPYTORCH $EXEC_BIN "$@"
-    #singularity exec $SIFPYTORCH bash -c "exec -a $REAL_PYTHON $EXEC_BIN $( test $# -eq 0 || printf " %q" "$@" )"
 fi
 """.replace( '$', '\\$' )
 
 
+#
+# Make a SquashFS file of the virtual environment.
+#
 local_bin_make_squashfs = """
 #!/bin/bash -e
 
-if [[ -f "/.singularity.d/Singularity" ]] 
+if [[ -d "/.singularity.d" ]] 
 then
     # In a singularity container, just in case a user would add this to the path.
     >&2 echo 'The make-squashfs command should not be run in the container.'
@@ -229,10 +247,14 @@ echo -e '\\nCreated $CONTAINERROOT/user-software.squashfs from $CONTAINERROOT/us
 """.replace( '$', '\\$' )
 
 
+#
+# Bin script to restore the user-software directory from a SquashFS file for further 
+# updating.
+#
 local_bin_unmake_squashfs = """
 #!/bin/bash -e
 
-if [[ -f "/.singularity.d/Singularity" ]] 
+if [[ -d "/.singularity.d" ]] 
 then
     # In a singularity container, just in case a user would add this to the path.
     >&2 echo 'The unmake-squashfs command should not be run in the container.'
@@ -265,9 +287,36 @@ echo -e '\\nCreated $CONTAINERROOT/user-software subdirectory from $CONTAINERROO
 
 
 #
-# Code for scripts in the runscript subdirectory
+# Script to list packages in a container for compatibility with the CSC approach.
+# Goes in bin to be available outside the container and runscript to also be 
+# available inside.
 #
+local_bin_runscript_list_packages = """
+#!/bin/bash -e
 
+if [[ -d "/.singularity.d" ]] 
+then
+    # Running in a singularity container already
+    pip3 list
+else
+    # Not running in a container. We could simply use the pip script,
+    # or start in the container which is what we will do.
+
+    if [ -z $SIFJAX ] || [ ! -f $SIFJAX ]
+    then
+        >&2 echo "SIFJAX is undefined or wrong, use this command with the jax module properly loaded!"
+        exit
+    fi
+
+    singularity exec $SIFJAX pip3 list
+fi
+
+""".replace( '$', '\\$' )
+
+
+#
+# Initialise the conda and virtual environment
+#
 local_runscript_init_conda_venv=f"""
 #
 # Source this file to initialize both the Conda environment and 
@@ -276,17 +325,19 @@ local_runscript_init_conda_venv=f"""
 # This script is still useful to initialise the environment when the
 # module is not loaded, e.g., to execute commands in the `postinstallcmds` section.
 #
-source /opt/miniconda3/bin/activate {local_conda_env}
+# Conda not needed anymore, done by initialisation in the container
+#source /opt/miniconda3/bin/activate {local_conda_env}
 source /user-software/venv/{local_conda_env}/bin/activate
 
 """
 
 
+#
+# Runscript to run Python in the initialised container.
+# This script is no longer needed but here for compatibility with older containers.
+#
 local_runscript_python_simple="""
 #!/bin/bash -e
-
-# Start conda environment inside the container
-# eval "$WITH_CONDA_VENV"
 
 # Run application
 python "$@"
@@ -294,6 +345,11 @@ python "$@"
 """.replace( '$', '\\$' )
 
 
+#
+# Runscript template for distributed learning with PyTorch, doing all proper
+# initialisations of MIOpen and RCCL and some PyTorch initialisations.
+# Note that this script is not suitable for all types of distributed learning!
+#
 local_runscript_python_distributed="""
 #!/bin/bash -e
 
@@ -325,7 +381,7 @@ export NCCL_NET_GDR_LEVEL=3    # Not really needed anymore for ROCm 6.2 as this 
 export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
 
 # Report affinity to check 
-echo "Rank $SLURM_PROCID --> $(taskset -p \$\$); GPU $ROCR_VISIBLE_DEVICES"
+echo "Rank $SLURM_PROCID --> $(taskset -p $$); GPU $ROCR_VISIBLE_DEVICES"
 
 # The usual PyTorch initialisations (also needed on NVIDIA)
 # Note that since we fix the port ID it is not possible to run, e.g., two
@@ -341,6 +397,12 @@ python "$@"
 """.replace( '$', '\\$' )
 
 
+#
+# Runscript used by other scripts to extract the first node of a 
+# multi-node allocation.
+# This version is based on a SLURM environment variable so that it can be
+# used inside the container where we cannot run Slurm commands.
+#
 local_runscript_get_master="""
 #!/usr/bin/env python3
 # This way of starting Python should work both on LUMI and in the container, though
@@ -372,19 +434,32 @@ if __name__ == '__main__':
 """
 
 
+####################################################################################################
 #
-# Now install does scripts and do further preparations of the container.
+# Installing mostly done in postinstallcmds as we have no EasyBlock to work with the container.
 #
 
-local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' + \
+#local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' + \
+#                         '%(installdir)s/runscripts:/runscripts,' + \
+#                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
+local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,' + \
                          '%(installdir)s/runscripts:/runscripts,' + \
                          '/pfs,/scratch,/projappl,/project,/flash,/appl'
 
 postinstallcmds = [
+    #
     # Install the scripts in the bin subdirectory
+    #
     'mkdir -p %(installdir)s/bin',
     f'cat >%(installdir)s/bin/start-shell <<EOF {local_bin_start_shell}EOF',
-    'chmod a+x %(installdir)s/bin/start-shell',    
+    'chmod a+x %(installdir)s/bin/start-shell',
+    f'cat >%(installdir)s/bin/make-squashfs <<EOF {local_bin_make_squashfs}EOF',
+    'chmod a+x %(installdir)s/bin/make-squashfs',    
+    f'cat >%(installdir)s/bin/unmake-squashfs <<EOF {local_bin_unmake_squashfs}EOF',
+    'chmod a+x %(installdir)s/bin/unmake-squashfs',    
+    f'cat >%(installdir)s/bin/list-packages <<EOF {local_bin_runscript_list_packages}EOF',
+    'chmod a+x %(installdir)s/bin/list-packages',
+    # CSC-style wrapper scripts
     f'cat >%(installdir)s/bin/python <<EOF {local_bin_python}EOF',
     'chmod a+x %(installdir)s/bin/python',
     f'ln -s ./python %(installdir)s/bin/python{local_c_python_m}',
@@ -396,12 +471,12 @@ postinstallcmds = [
     'ln -s  ./python %(installdir)s/bin/huggingface-cli',
     'ln -s  ./python %(installdir)s/bin/ray',
     'ln -s  ./python %(installdir)s/bin/torchrun',
-    f'cat >%(installdir)s/bin/make-squashfs <<EOF {local_bin_make_squashfs}EOF',
-    'chmod a+x %(installdir)s/bin/make-squashfs',    
-    f'cat >%(installdir)s/bin/unmake-squashfs <<EOF {local_bin_unmake_squashfs}EOF',
-    'chmod a+x %(installdir)s/bin/unmake-squashfs',    
-    # Install the runscripts
+    #
+    # Commands in runscripts
+    #
     'mkdir -p %(installdir)s/runscripts',
+    f'cat >%(installdir)s/runscripts/list-packages <<EOF {local_bin_runscript_list_packages}EOF',
+    'chmod a+x %(installdir)s/runscripts/list-packages',
     f'cat >%(installdir)s/runscripts/init-conda-venv <<EOF {local_runscript_init_conda_venv}EOF',
     'chmod a-x %(installdir)s/runscripts/init-conda-venv',
     f'cat >%(installdir)s/runscripts/conda-python-simple <<EOF {local_runscript_python_simple}EOF',
@@ -410,8 +485,10 @@ postinstallcmds = [
     'chmod a+x %(installdir)s/runscripts/conda-python-distributed',
     f'cat >%(installdir)s/runscripts/get-master <<EOF {local_runscript_get_master}EOF',
     'chmod a+x %(installdir)s/runscripts/get-master',
+    #
     # Create the virtual environment and space for other software installations that
     # can then be packaged.
+    #
     'mkdir -p %(installdir)s/user-software/venv',
     # For the next command, we don't need all the bind mounts yet, just the user-software one is enough.
     f'singularity exec --bind %(installdir)s/user-software:/user-software %(installdir)s/{local_sif} bash -c \'$WITH_CONDA ; cd /user-software/venv ; python -m venv --system-site-packages {local_conda_env}\'',
@@ -431,8 +508,12 @@ sanity_check_commands = [
     'echo "Syntax check of python"          ; bash -n python',
     'echo "Syntax check of make-squashfs"   ; bash -n make-squashfs',
     'echo "Syntax check of unmake-squashfs" ; bash -n unmake-squashfs',
+    'echo "Syntax check of list-packages"   ; bash -n list-packages',
     'echo "Syntax check of conda-python-simple"      ; bash -n %(installdir)s/runscripts/conda-python-simple',
     'echo "Syntax check of conda-python-distributed" ; bash -n %(installdir)s/runscripts/conda-python-distributed',
+    # Check the list-packaged wrapper script outside and inside the container
+    'list-packages',
+    'singularity exec $SIFPYTORCH list-packages',
     # Check python wrapper script and reported version
     ('echo "Testing Python wrapper script and version" ; '
     f'python --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
@@ -482,25 +563,26 @@ modextravars = {
     'RUNSCRIPTSPYTORCH':                '%(installdir)s/runscripts',
     #'SINGULARITY_BIND':                local_singularity_bind,
     #
-    # The following two lines inject the environment variables WITH_VENV and WITH_CONDA_VENV into
-    # the container that have a similar function as WITH_CONDA: the first one is the command to
-    # activate the Python virtrual environment defined by default and the second one activates
-    # both the conda and Python virtual environments, with the latter environment built on top of the
-    # former.
+    # In containers made before 2025, we had the WITH_CONDA environment variable set in the container
+    # with the commands to activate the conda environment, and the module defined the WITH_VENV
+    # environment variable with the commands to activate the preset virtual environment and
+    # WITH_CONDA_VENV to do both. As the combination of container and module now do that work,
+    # these are no longer needed, but for compatibility with older scripts we let them execute 
+    # dummy commands.
     #
-    'SINGULARITYENV_WITH_VENV':         f'source /user-software/venv/{local_conda_env}/bin/activate',
-    'SINGULARITYENV_WITH_CONDA_VENV':   'source /runscripts/init-conda-venv',
+    'SINGULARITYENV_WITH_VENV':         'true',
+    'SINGULARITYENV_WITH_CONDA_VENV':   'true',
     #
-    # The following lines inject environment variables into the container that
-    # basically have the same effect as activating the conda environment and Python
-    # virtual environment. When these are defined in the module, WITH_CONDA, WITH_VENV or
-    # WITGH_CONDA_VENV are not really needed.
+    # The following lines have the same effect as activating the Python virtual environment
+    # with the script created by venv. The conda environment is already correctly initialised
+    # through settings in the container /.singularity.d/env/10-docker2singularity.sh script.
     #
-    'SINGULARITYENV_PREPEND_PATH':      '/runscripts:/user-software/venv/pytorch/bin:/opt/miniconda3/envs/pytorch/bin:/opt/miniconda3/condabin',
-    'SINGULARITYENV_CONDA_DEFAULT_ENV': 'pytorch',
-    'SINGULARITYENV_CONDA_EXE':         '/opt/miniconda3/bin/conda',
-    'SINGULARITYENV_CONDA_PREFIX':      '/opt/miniconda3/envs/pytorch',
-    #'SINGULARITYENV_CONDA_PYTHON_EXE':  '/opt/miniconda3/bin/python',  # This Python should not be used as-is. Instead the wrapper from the Python venv should be used.
+    #'SINGULARITYENV_PREPEND_PATH':      '/runscripts:/user-software/venv/pytorch/bin:/opt/miniconda3/envs/pytorch/bin:/opt/miniconda3/condabin',
+    'SINGULARITYENV_PREPEND_PATH':      '/runscripts:/user-software/venv/pytorch/bin',
+    #'SINGULARITYENV_CONDA_DEFAULT_ENV': 'pytorch',                      # Set in the container already
+    #'SINGULARITYENV_CONDA_EXE':         '/opt/miniconda3/bin/conda',    # Now set in the container already
+    #'SINGULARITYENV_CONDA_PREFIX':      '/opt/miniconda3/envs/pytorch', # Now set in the container already
+    #'SINGULARITYENV_CONDA_PYTHON_EXE':  '/opt/miniconda3/bin/python',   # This Python should not be used as-is. Instead the wrapper from the Python venv should be used.
     'SINGULARITYENV_VIRTUAL_ENV':       '/user-software/venv/pytorch',
     # Typical NCCL environment variables
     'NCCL_SOCKET_IFNAME':               'hsn',

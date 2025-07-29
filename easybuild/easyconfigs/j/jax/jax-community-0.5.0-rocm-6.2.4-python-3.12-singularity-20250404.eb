@@ -2,20 +2,23 @@
 #DOC Contains JAX 0.5.0 (community version) with NumPy 2.2.4 and SciPy 1.15.2.
 easyblock = 'MakeCp'
 
-local_jax_version    = 'community-0.5.0'
-local_NumPy_version  = '2.2.4'
-local_SciPy_version  = '1.15.2'
-local_pandas_version = '2.2.2'
-local_rocm_version   = '6.2.4'
-local_python_version = '3.12'
-local_date           = '20250404'
-local_hash           = '67b47a3e813c'
+local_c_jax_version    = 'community-0.5.0'
+local_c_NumPy_version  = '2.2.4'
+local_c_SciPy_version  = '1.15.2'
+local_c_pandas_version = '2.2.2'
+local_c_rocm_version   = '6.2.4'
+local_c_python_mm      = '3.12'
+local_c_date           = '20250404'
+local_c_dockerhash     = '67b47a3e813c'
+
+local_conda_env = 'jax'
+local_c_python_m = local_c_python_mm.split('.')[0]
 
 name =          'jax'
-version =       local_jax_version
-versionsuffix = f'-rocm-{local_rocm_version}-python-{local_python_version}-singularity-{local_date}'
+version =       local_c_jax_version
+versionsuffix = f'-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-singularity-{local_c_date}'
 
-local_sif =    f'lumi-jax-rocm-{local_rocm_version}-python-{local_python_version}-jax-{local_jax_version}-dockerhash-{local_hash}.sif'
+local_sif =    f'lumi-jax-rocm-{local_c_rocm_version}-python-{local_c_python_mm}-jax-{local_c_jax_version}-dockerhash-{local_c_dockerhash}.sif'
 #local_docker = 'lumi-pytorch-rocm-5.6.1-python-3.10-pytorch-v2.1.0.docker'
 
 homepage = 'https://jax.readthedocs.io/en/latest/'
@@ -26,7 +29,7 @@ whatis = [
 ]
 
 description = f"""
-This module provides a container with JAX %(version)s with NumPy {local_NumPy_version} and SciPy {local_SciPy_version}.
+This module provides a container with JAX %(version)s with NumPy {local_c_NumPy_version} and SciPy {local_c_SciPy_version}.
 
 The module defines a number of environment variables:
 *   SIF and SIFJAX: The full path and name of the Singularity SIF file 
@@ -37,7 +40,7 @@ The module defines a number of environment variables:
 *   RUNSCRIPTS and RUNSCRIPTSJAX: The directory with some sample
     runscripts.
     
-Note that this container uses a Conda environment (jax) internally. When in
+Note that this container uses a Conda environment ({local_conda_env}) internally. When in
 the container, the command to activate the container is contained in the
 environment variable WITH_CONDA.
 """
@@ -61,49 +64,239 @@ files_to_copy = [
     ([local_sif], '.'),
 ]
 
-local_bin_start_shell="""
+####################################################################################################
+#
+# Scripts for bin and and/or runscript
+#
+
+#
+# Script to start a shell in the container and/or execute commands in a shell.
+#
+
+local_bin_start_shell = """
 #!/bin/bash -e
 
 # Run application
-if [[ -f "/.singularity.d/Singularity" ]] 
+if [ -d "/.singularity.d/" ]
 then
     # In a singularity container, just in case a user would add this to the path.
-    if [ "\$#" -eq 0 ]
-    then
-        \$WITH_CONDA ; exec bash
-    else
-        \$WITH_CONDA ; exec bash "\$@"
-    fi
+    exec bash "$@"
 else
     # Not yet in the container
-    if [ "\$#" -eq 0 ]
+
+    if [ -z $SIFJAX ] || [ ! -f $SIFJAX ]
     then
-        singularity exec \$SIFJAX bash -c '\\$WITH_CONDA ; exec bash'
-    else
-        singularity exec \$SIFJAX bash "\$@"
+        >&2 echo "SIFJAX is undefined or wrong, use this command with the jax module properly loaded!"
+        exit
     fi
+
+    singularity exec $SIFJAX bash "$@"
 fi
 
-"""
+""".replace( '$', '\\$' )
 
-local_runscript_python_simple="""
+#
+# Python wrapper script, also works for several other commands by symlinking.
+# Based on code from CSC but adapted for the approach with this module.
+#
+local_bin_python = """
+#!/bin/bash
+#
+# Python wrapper script, also used for some other commands.
+#
+# This will start python, or whatever the name of the link to this script is,
+# in the PyTorch container.
+#
+if [ -z $SIFJAX ] || [ ! -f $SIFJAX ]
+then
+    >&2 echo "SIFJAX is undefined or wrong, use this command with the PyTorch module properly loaded!"
+    exit
+fi
+
+#REAL_PYTHON="${BASH_SOURCE[0]}"  # Full path + name of the file being executed, which can be the symbolic link.
+EXEC_BIN=$(basename "$0")         # Command executed without the path, so python or the name of the symbolic link.
+
+if [ -d /.singularity.d/ ]; then
+    1>&2 echo "These wrapper scripts are not meant to be executed in a container and will lead to infinite loops."
+    exit 1
+else
+    # Note: The CSC script starts the command in the container with
+    # singularity exec $SIFJAX bash -c "exec -a $REAL_PYTHON $EXEC_BIN $( test $# -eq 0 || printf " %q" "$@" )"
+    # where "exec -a $REAL_PYTHON $EXEC_BIN" executes $EXE_BIN but setting arg[0] to $REAL_PYTHON.
+    # This however breaks the working of the virtual environment, likely # because of the overwriting
+    # of argv[0] so that Python can't find the correct path from where it was started. This is because
+    # of the way the EasyBuild modules work with virtual environments. They are not seen in the container
+    # in their place in the file system, but in /user-software. We have done this to be able to squash
+    # that whole directory structure in a SquashFS file mounted in the container to reduce the pressure
+    # that big virtual environments cause on the filesystem.
+    singularity exec $SIFJAX $EXEC_BIN "$@"
+fi
+""".replace( '$', '\\$' )
+
+
+#
+# Make a SquashFS file of the virtual environment.
+#
+local_bin_make_squashfs = """
 #!/bin/bash -e
 
-# Start conda environment inside the container
-\$WITH_CONDA
+if [[ -d "/.singularity.d" ]] 
+then
+    # In a singularity container, just in case a user would add this to the path.
+    >&2 echo 'The make-squashfs command should not be run in the container.'
+    exit 1
+fi
+
+cd "%(installdir)s"
+
+if [[ ! -d "user-software" ]]
+then
+    >&2 echo -e 'The $CONTAINERROOT/user-software subdirectory does not exist, so there is nothing to put into the SquashFS file.'
+    exit 2
+fi
+
+if [[ -f "user-software.squashfs" ]]
+then
+    >&2 echo -e '$CONTAINERROOT/user-software.squashfs already exists. Please remove the file by' \\\\
+                '\\nhand if you are sure you wish to proceed and re-run the make-squashfs command.'
+    exit 3
+fi
+
+mksquashfs user-software user-software.squashfs -processors 1 -no-progress |& grep -v Unrecognised
+
+echo -e '\\nCreated $CONTAINERROOT/user-software.squashfs from $CONTAINERROOT/user-software.' \\\\
+        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted' \\\\
+        '\\nfrom $CONTAINERROOT/user-software.squashfs. Note that /user-software in the' \\\\
+        '\\ncontainer will then be a read-only directory.' \\\\
+        '\\nAfter reloading the module, you can also remove the $CONTAINERROOT/user-software' \\\\
+        '\\nsubdirectory if you so wish.\\n'
+
+""".replace( '$', '\\$' )
+
+
+#
+# Bin script to restore the user-software directory from a SquashFS file for further 
+# updating.
+#
+local_bin_unmake_squashfs = """
+#!/bin/bash -e
+
+if [[ -d "/.singularity.d" ]] 
+then
+    # In a singularity container, just in case a user would add this to the path.
+    >&2 echo 'The unmake-squashfs command should not be run in the container.'
+    exit 1
+fi
+
+cd "%(installdir)s"
+
+if [[ ! -f "user-software.squashfs" ]]
+then
+    >&2 echo -e '$CONTAINERROOT/user-software.squashfs does not exist so cannot uncompress it.'
+    exit 2
+fi
+
+if [[ -d "user-software" ]]
+then
+    >&2 echo -e 'The $CONTAINERROOT/user-software subdirectory already exists. Please remove this directory by hand' \\\\
+                '(rm -r $CONTAINERROOT/user-software) if you are sure you wish to proceed and re-run the unmake-squashfs command.'
+    exit 3
+fi
+
+unsquashfs -d ./user-software user-software.squashfs
+
+echo -e '\\nCreated $CONTAINERROOT/user-software subdirectory from $CONTAINERROOT/user-software.squasfs.' \\\\
+        '\\nYou need to reload the PyTorch module to ensure that the software is now mounted from the' \\\\
+        '\\n$CONTAINERROOT/user-software directory and can now write to /user-software in the container.' \\\\
+        '\\nYou can then also remove the $CONTAINERROOT/user-software.squashfs file if you so wish.\\n'
+
+""".replace( '$', '\\$' )
+
+
+#
+# Script to list packages in a container for compatibility with the CSC approach.
+# Goes in bin to be available outside the container and runscript to also be 
+# available inside.
+#
+local_bin_runscript_list_packages = """
+#!/bin/bash -e
+
+if [[ -d "/.singularity.d" ]] 
+then
+    # Running in a singularity container already
+    pip3 list
+else
+    # Not running in a container. We could simply use the pip script,
+    # or start in the container which is what we will do.
+
+    if [ -z $SIFJAX ] || [ ! -f $SIFJAX ]
+    then
+        >&2 echo "SIFJAX is undefined or wrong, use this command with the jax module properly loaded!"
+        exit
+    fi
+
+    singularity exec $SIFJAX pip3 list
+fi
+
+""".replace( '$', '\\$' )
+
+
+local_runscript_python_simple = """
+#!/bin/bash -e
 
 # Run application
-python "\$@"
+python "$@"
 
-"""
+""".replace( '$', '\\$' )
+
+####################################################################################################
+#
+# Installing mostly done in postcmds as we have no EasyBlock to easily work with the container.
+#
+
+#local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,/usr/lib64/libjansson.so.4,' + \
+#                         '%(installdir)s/runscripts:/runscripts,' + \
+#                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
+local_singularity_bind = '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,' + \
+                         '%(installdir)s/runscripts:/runscripts,' + \
+                         '/pfs,/scratch,/projappl,/project,/flash,/appl'
 
 postinstallcmds = [
+    #
+    # Commands in bin
+    #
     'mkdir -p %(installdir)s/bin',
     f'cat >%(installdir)s/bin/start-shell <<EOF {local_bin_start_shell}EOF',
     'chmod a+x %(installdir)s/bin/start-shell',
+    f'cat >%(installdir)s/bin/make-squashfs <<EOF {local_bin_make_squashfs}EOF',
+    'chmod a+x %(installdir)s/bin/make-squashfs',    
+    f'cat >%(installdir)s/bin/unmake-squashfs <<EOF {local_bin_unmake_squashfs}EOF',
+    'chmod a+x %(installdir)s/bin/unmake-squashfs',    
+    f'cat >%(installdir)s/bin/list-packages <<EOF {local_bin_runscript_list_packages}EOF',
+    'chmod a+x %(installdir)s/bin/list-packages',
+    # Python wrapper in bin with symbolic links for additional commands
+    f'cat >%(installdir)s/bin/python <<EOF {local_bin_python}EOF',
+    'chmod a+x %(installdir)s/bin/python',
+    f'ln -s ./python %(installdir)s/bin/python{local_c_python_m}',
+    f'ln -s ./python %(installdir)s/bin/python{local_c_python_mm}',
+    'ln -s  ./python %(installdir)s/bin/pip',
+    f'ln -s ./python %(installdir)s/bin/pip{local_c_python_m}',
+    #f'ln -s ./python %(installdir)s/bin/pip{local_c_python_mm}', # Does not exist in the jax container.
+    #
+    # Commands in runscripts
+    #
     'mkdir -p %(installdir)s/runscripts',
+    f'cat >%(installdir)s/runscripts/list-packages <<EOF {local_bin_runscript_list_packages}EOF',
+    'chmod a+x %(installdir)s/runscripts/list-packages',
     f'cat >%(installdir)s/runscripts/conda-python-simple <<EOF {local_runscript_python_simple}EOF',
     'chmod a+x %(installdir)s/runscripts/conda-python-simple',
+    #
+    # Create the virtual environment and space for other software installations that
+    # can then be packaged.
+    #
+    'mkdir -p %(installdir)s/user-software/venv',
+    # For the next command, we don't need all the bind mounts yet, just the user-software one is enough.
+    f'singularity exec --bind %(installdir)s/user-software:/user-software %(installdir)s/{local_sif} bash -c \'cd /user-software/venv ; python -m venv --system-site-packages {local_conda_env}\'',
 ]
 
 sanity_check_paths = {
@@ -115,23 +308,48 @@ sanity_check_paths = {
 }
 
 sanity_check_commands = [
-    """start-shell -c '/runscripts/conda-python-simple -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"' """   
+    'singularity exec $SIFJAX python -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"',
+    # Testing wrapper scripts
+    """start-shell -c '/runscripts/conda-python-simple -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"' """,
+    # Testing the CSC-style wrapper scripts
+    'list-packages',
+    'pip list',
+    f'pip{local_c_python_m}  list',
+    # Check python wrapper script and reported version
+    ('echo "Testing Python wrapper script and version" ; '
+    f'python --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
+    # Check pythonMAJOR wrapper script and reported version
+    (f'echo "Testing python{local_c_python_m} wrapper script and version" ; '
+    f'python{local_c_python_m} --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
+    # Check pythonMAJOR.MINOR wrapper script and reported version
+    (f'echo "Testing python{local_c_python_mm} wrapper script and version" ; '
+    f'python{local_c_python_mm} --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
+    # Check the JAX version - Does not work in this version as this is a special version.
+    #(f'echo "Testing python wrapper script and JAX version (expected {local_c_jax_version})" ; '
+    #f'python -c \'import jax ; print(jax.__version__)\' | grep -q {local_c_jax_version}'),
+    # Check pip and numpy version
+    (f'echo "Testing pip wrapper script and numpy version (expected {local_c_NumPy_version})" ; '
+    f'pip freeze | grep numpy | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_NumPy_version}"'),    
+    # Check pipMAJOR and scipy version
+    (f'echo "Testing pip{local_c_python_m} wrapper script and SciPy version (expected {local_c_SciPy_version})" ; '
+    f'pip{local_c_python_m} freeze | grep scipy | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_SciPy_version}"'),    
 ]
 
 modextravars = {
-    # SIF variables currently set by a function via modluafooter.
-    #'SIF':             '%(installdir)s/' + local_sif,
-    #'SIFJAX':          '%(installdir)s/' + local_sif,
-    'RUNSCRIPTS':       '%(installdir)s/runscripts',
-    'RUNSCRIPTSJAX':    '%(installdir)s/runscripts',
-    'SINGULARITY_BIND': '/var/spool/slurmd,/opt/cray,/usr/lib64/libcxi.so.1,' +
-                        '%(installdir)s/runscripts:/runscripts,' + 
-                        '/pfs,/scratch,/projappl,/project,/flash,/appl'
+    # SIF and SIFJAX variables currently set by a function via modluafooter.
+    'CONTAINERROOT':                '%(installdir)s',
+    'RUNSCRIPTS':                   '%(installdir)s/runscripts',
+    'RUNSCRIPTSJAX':                '%(installdir)s/runscripts',
+    'SINGULARITYENV_PREPEND_PATH':  f'/runscripts::/user-software/venv/{local_conda_env}/bin',
+    'SINGULARITYENV_VIRTUAL_ENV':   f'/user-software/venv/{local_conda_env}',
+    # Typical NCCL environment variables
+    'NCCL_SOCKET_IFNAME':               'hsn',
+    'NCCL_NET_GDR_LEVEL':               '3',  # Not really needed anymore for ROCm 6.2 as this is now the default
 }
 
 modluafooter = f"""
 -- Call a routine to set the various environment variables.
-create_container_vars( '{local_sif}', '%(name)s', '%(installdir)s' )
+create_container_vars( '{local_sif}', '%(name)s', '%(installdir)s', '{local_singularity_bind}' )
 """
 
 moduleclass = 'devel'

@@ -1,8 +1,7 @@
 # Developed by Kurt Lust and Mihkel Tiks for LUMI
 #DOC Contains PyTorch 2.6.0 with torchaudio 2.6.0, torchdata 0.9.0+cpu, torchtext 0.18.0+cpu,
-#DOC torchvision 0.21.0 GPU version, DeepSpeed 0.15.1,  flash-attention 2.7.3, transformers 4.50.1,
-#DOC xformers 0.0.30+a0a401e4.d20250322 and vllm 0.7.2.post2+rocm624, on Python 3.12 and ROCm 6.2.3.
-#DOC mpi4py 3.1.6 interfacing to Cray MPICH is also included.
+#DOC torchvision 0.21.0 GPU version, DeepSpeed 0.15.1,  flash-attention 2.7.3, transformers 4.51.1,
+#DOC xformers 0.0.30+ffe48087.d20250410 and vllm 0.7.2+rocm624, on Python 3.12 and ROCm 6.2.3.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
 #DOC
 #DOC This version also includes a pre-set virtual environment, but the module together with the 
@@ -13,15 +12,14 @@ easyblock = 'MakeCp'
 local_c_rocm_version =    '6.2.4'
 local_c_python_mm =       '3.12'
 local_c_PyTorch_version = '2.6.0'
-local_c_dockerhash =      '33fb441e91f5'
-local_c_date =            '20250326'
+local_c_dockerhash =      'ef203c810cc9'
+local_c_date =            '20250410'
 
 local_c_DeepSpeed_version =      '0.15.1'
 local_c_flashattention_version = '2.7.3'
-local_c_transformers_version =   '4.50.1'
-local_c_xformers_version =       '0.0.30+a0a401e4.d20250322'
+local_c_transformers_version =   '4.51.1'
+local_c_xformers_version =       '0.0.30+ffe48087.d20250410'
 local_c_vllm_version =           '0.7.2+rocm624' 
-local_c_mpi4py_version =         '3.1.6'
 
 local_conda_env = 'pytorch'
 local_c_python_m = local_c_python_mm.split('.')[0]
@@ -44,8 +42,7 @@ description = f"""
 This module provides a container with PyTorch %(version)s (with torchaudio,
 torchdata, torchtext and torchvision) on Python {local_c_python_mm}. It also contains 
 DeepSpeed {local_c_DeepSpeed_version}, flash-attention {local_c_flashattention_version}, transformers {local_c_transformers_version}, 
-xformers {local_c_xformers_version} and vllm {local_c_vllm_version}. mpi4py {local_c_mpi4py_version} 
-interfacing with Cray MPICH is also included.
+xformers {local_c_xformers_version} and vllm {local_c_vllm_version}.
 
 The module defines a number of environment variables available outside the
 container:
@@ -161,7 +158,7 @@ else
 
     if [ -z $SIFPYTORCH ] || [ ! -f $SIFPYTORCH ]
     then
-        >2& echo "SIFPYTORCH is undefined or wrong, use this command with the PyTorch module properly loaded!"
+        >&2 echo "SIFPYTORCH is undefined or wrong, use this command with the PyTorch module properly loaded!"
         exit
     fi
 
@@ -208,6 +205,7 @@ else
     singularity exec $SIFPYTORCH $EXEC_BIN "$@"
 fi
 """.replace( '$', '\\$' )
+
 
 #
 # Make a SquashFS file of the virtual environment.
@@ -333,15 +331,13 @@ source /user-software/venv/{local_conda_env}/bin/activate
 
 """
 
+
 #
 # Runscript to run Python in the initialised container.
 # This script is no longer needed but here for compatibility with older containers.
 #
 local_runscript_python_simple="""
 #!/bin/bash -e
-
-# Start conda environment inside the container
-# eval "$WITH_CONDA_VENV"
 
 # Run application
 python "$@"
@@ -399,6 +395,7 @@ export RANK=$SLURM_PROCID
 python "$@"
 
 """.replace( '$', '\\$' )
+
 
 #
 # Runscript used by other scripts to extract the first node of a 
@@ -575,7 +572,7 @@ modextravars = {
     #
     'SINGULARITYENV_WITH_VENV':         'true',
     'SINGULARITYENV_WITH_CONDA_VENV':   'true',
-    #
+   #
     # The following lines have the same effect as activating the Python virtual environment
     # with the script created by venv. The conda environment is already correctly initialised
     # through settings in the container /.singularity.d/env/10-docker2singularity.sh script.

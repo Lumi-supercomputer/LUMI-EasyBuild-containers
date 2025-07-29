@@ -8,11 +8,25 @@ doing distributed AI, and a suitable version of ROCm for the version of JAX.
 to use newer version of ROCm than the drivers on LUMI support, so there is no
 guarantee that this container will work for you (even though it did pass some
 tests we did), and there might be problems that cannot be fixed by the
-support team. This is software for users with a development spirit, not
-for users who expect something that simply and always works.**
+support team. JAX is software for users with a development spirit, not
+for users who expect something that simply and always works, and this is
+reflected in its 0.x version numbers. LUST cannot offer more than a best
+effort support and has no link to the JAX developers.**
 
 
 ## Use via EasyBuild-generated modules
+
+!!! Note "Changes to the EasyConfigs in late July 2025"
+
+    The EasyConfigs for the jax containers for the 2025 versions received a major 
+    update at the end of July. Instructions below are only valid if you (rei)installed
+    the container afterwards.
+    
+    Re-installing is tricky as by default EasyBuild will take the already installed
+    version of the EasyConfig, so before re-installing, change your directory to the
+    directory containing the EasyConfigs, which is 
+    `/appl/local/containers/LUMI-EasyBuild-containers/easybuild/easyconfigs/j/jax`.
+    
 
 The EasyBuild installation with the EasyConfigs mentioned below will do four things:
 
@@ -44,12 +58,30 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
     -   `RUNSCRIPTS` and `RUNSCRIPTSJAX` contain the full path of the directory
         containing some sample run scripts that can be used to run software in the 
         container, or as inspiration for your own variants.
+
+    The 2025 container modules installed after the end of July, 2025 also define 
+    `SINGULARITYENV_PREPEND_PATH` in a way that ensures that the `/runscripts` 
+    subdirectory in the container will be in the search path in the container.
+
+    These containers also offer support for a virtual environment and define
+    a few other `SINGULARITYENV_*` environment variables that inject environment variables
+    in the container that are equivalent to those created by the activate script for 
+    the Python virtual environment.
         
 3.  It creates the $RUNSCRIPTS directory with scripts to be run in the container:
 
     -   `conda-python-simple`: This initialises Python in the container and then calls Python
         with the arguments of `conda-python-simple`. It can be used, e.g., to run commands
         through Python that utilise a single task but all GPUs.
+        
+        Note that in the 2025 and later JAX containers this script doesn't make much 
+        sense anymore and one could just as well call `python` in the container as the 
+        activation of the conda environment used to install JAX is now fully automatic.
+        It is left in for compatibility with older containers as it may be used in some
+        3rd party documentation that we are not aware of.
+        
+    From the 2025 containers onwards, the directory with runscripts is in the PATH in 
+    the container if the module is loaded before entering the container.
         
 4.  It creates a `bin` directory with scripts to be run outside of the container:
 
@@ -61,12 +93,50 @@ The EasyBuild installation with the EasyConfigs mentioned below will do four thi
         -   With arguments it simply runs a shell in the container, but the Conda 
             environment will not be activated.
             
+    For the 2025 containers there is also support for a pre-initialised virtual environment
+    that works in the same way as in the [PyTorch modules](../../p/PyTorch/index.md).
+    This comes with two extra scripts in the `bin` subdirectory:
+    
+    -   `make-squashfs`: Make the user-software.squashfs file that would then be mounted
+        in the container after reloading the module. This will enhance performance if
+        the extra installation in user-software contains a lot of files.
+
+    -   `unmake-squashfs`: Unpack the user-software.squashfs file into the user-software
+        subdirectory of $CONTAINERROOT to enable installing additional packages.
+            
     The `bin` directory is not mounted in the container, but if you would, the 
     scripts would recognise this and work or print a message that they cannot 
     be used in that environment.
 
+5.  From the 2025 containers onwards, it also creates wrapper scripts for the
+    `python`and `pip` commands (including the commands with major and major.minor Python
+    version in their name), and also has a `list-packages` script. These scripts should work in the same 
+    way as those in the CSC local software stacks as documented in the [CSC PyTorch documentation](https://docs.csc.fi/apps/jax/)
+    and the [CSC machine learning guide](https://docs.csc.fi/support/tutorials/ml-guide/).
+
+From the 2025 container versions onwards installed after the end of July 2025, 
+EasyBuild will also activate the Python virtual environment `jax`. 
+Inside the container, the virtual environment is available in
+`/user-software/venv` while outside the container the files can be found in 
+`$CONTAINERROOT/user-software/venv` (if this directory has not been removed after creating
+a SquashFS file from it for better file system performance). You can also use the 
+`/user-software` subdirectory in the container to install other software through other methods.
+  
+Note though that when using our CSC-like python and pip wrapper scripts,
+there is one important difference with the way the CSC scripts 
+work: Our module works with a predefined virtual environment which is in a different
+place in the file system in the container and outside the container, but can also 
+be squashed into a SquashFS file to avoid killing the file system when running a 
+big virtual environment. Moreover, that environment is also automatically activated
+when loading the module. So creating another virtual environment may conflict. If this
+would be a real issue, contace LUMI support and we may look for a custom solution
+(e.g., by telling you how to install separate modules for each virtual environment).
+
+
+### Initialising the Conda environment in the pre-2025 containers
+
 The container uses a miniconda environment in which Python and its packages are installed.
-That environment needs to be activated in the container when running, which can be done
+Before the 2025 containers, that environment needs to be activated in the container when running, which can be done
 with the command that is available in the container as the environment variable
 `WITH_CONDA` (which for this container it is
 `source /opt/miniconda3/bin/activate jax`).
@@ -112,7 +182,14 @@ srun -N1 -n1 --gpus 8 singularity exec $SIF /runscripts/conda-python-simple \
 ```
 
 
-### Installation
+### Virtual environment support
+
+This support is implemented in the same way as in the PyTorch containers, so we refer 
+to the documentation in the
+[PyTorch page](../../p/PyTorch/index.md#extending-the-containers-with-virtual-environment-support).
+
+
+### Installation with EasyBuild
 
 To install the container with EasyBuild, follow the instructions in the
 [EasyBuild section of the LUMI documentation, section "Software"](https://docs.lumi-supercomputer.eu/software/installing/easybuild/),
@@ -161,7 +238,11 @@ You can get access to your files on LUMI in the regular location by also using t
 -B /pfs,/scratch,/projappl,/project,/flash,/appl
 ```
 
-Note that the list recommended bindings may change after a system update or between 
-different containers. We do try to keep the EasyBuild recipes for the modules 
-up-to-date though to reflect those changes.
+Note that the list recommended bindings may change after a system update or between containers. E.g.,
+the containers provided since early 2025 already contain their own `libcxi.so.1` but the container
+is configured in such a way that binding the one from the system will do no harm. Some containers
+in the past also required binding `/usr/lib64/libjansson.so.4` but there is now a version in the
+newer containers, and overwriting that version may in fact create incompatibilities with other 
+software in the container.
+
 
