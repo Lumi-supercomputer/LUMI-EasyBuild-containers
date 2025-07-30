@@ -203,9 +203,7 @@ if [ "$CCPE_VERSION" != "{local_ccpe_version}" ] ;
 then
 
     lmod_dir="/opt/cray/pe/lmod/lmod" ;
-        
-    function clear-lmod() {{ [ -d $HOME/.cache/lmod ] && /bin/rm -rf $HOME/.cache/lmod ; }} ;
-    
+            
     source /etc/cray-pe.d/cray-pe-configuration.sh ;
     
     source $lmod_dir/init/profile ;
@@ -237,9 +235,12 @@ then
         printf "By using it you agree to the license https://downloads.hpe.com/pub/softlib2/software1/doc/p1796552785/v113125/eula-en.html\\n\\n" ;
     fi ;
 fi ;
+function clear-lmod() {{ [ -d $HOME/.cache/lmod ] && /bin/rm -rf $HOME/.cache/lmod ; }} ;
+function ccpe-srun() {{ SINGULARITYENV_PATH=$PATH SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH srun "$@" ; }} ;
 '
 
 """.replace( '$', '\\$' )
+
 
 ################################################################################
 #
