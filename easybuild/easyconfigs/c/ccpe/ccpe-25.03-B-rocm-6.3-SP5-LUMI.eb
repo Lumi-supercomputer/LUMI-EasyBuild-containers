@@ -491,6 +491,10 @@ sanity_check_paths = {
 local_expected_cce = '19.0.0'
 
 sanity_check_commands = [
+    # Test if rocm was installed in the container. I've seen zypper fail without stopping the container build...
+    'echo "INFO: Checking for /opt/rocm/bin"; ccpe-exec test -d /opt/rocm/bin',
+    # Test for one of the last applications we installed through zypper before rocm.
+    'echo "INFO: Checking for /usr/bin/vim"; ccpe-exec test -f /usr/bin/vim', 
     # The next test will check if modules are correctly initialised and if the correct cce
     # module is present.
     f'echo "INFO: Testing if cce/{local_expected_cce} is present" ; ccpe-singularity exec "$SIFCCPE" bash -i -c \'module --terse list\' |& grep -q "cce/{local_expected_cce}"',
