@@ -367,8 +367,8 @@ In total there are six scenarios that we take into account for jobs launched wit
 
 The steps that we take to start a job and execute the job script in the container:
 
-1.  One should first ensure that necessary environment variables to find back the container, do the
-    proper bindings, etc., are defined. So one my have to load the container if those variables are
+1.  One should first ensure that the necessary environment variables to find back the container, do the
+    proper bindings, etc., are defined. So one my have to load the container module if those variables are
     not present. This code should not be executed in the container as it would fail to find the module
     anyway.
 
@@ -395,7 +395,7 @@ Possible code to accomplish this is:
  # 
  if [ -z "${SWITCHTCCPE}" ]
  then
-     module load CrayEnv ccpe/24.11-LUMI || exit
+     module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
  fi
  
  if [ ! -d "/.singularity.d" ]
@@ -447,8 +447,6 @@ Possible code to accomplish this is:
 
      lmod_dir="/opt/cray/pe/lmod/lmod"
         
-     function clear-lmod() {{ [ -d $HOME/.cache/lmod ] && /bin/rm -rf $HOME/.cache/lmod ; }}
-    
      source /etc/cray-pe.d/cray-pe-configuration.sh
     
      source $lmod_dir/init/profile
@@ -472,6 +470,8 @@ Possible code to accomplish this is:
      export CCPE_VERSION="{local_ccpe_version}"
     
  fi
+ function clear-lmod() { [ -d $HOME/.cache/lmod ] && /bin/rm -rf $HOME/.cache/lmod ; } ;
+ function ccpe-srun() { SINGULARITYENV_PATH=$PATH SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH srun "$@" ; } ;
 
  unset SLURM_EXPORT_ENV ;
 
@@ -479,9 +479,10 @@ Possible code to accomplish this is:
  # From here on, the user can insert the code that runs in the container.
  #
  
- module list
+ module load LUMI/25.03 partition/C
+ module load lumi-CPEtools/1.2-cpeCray-25.03-hpcat-0.9
  
- srun … singularity exec $SIFCCPE <command> 
+ ccpe-srun … singularity exec $SIFCCPE <command> 
  ```
 
 This is of course way to complicated to expose to users, but line 57-86 is 
@@ -502,7 +503,7 @@ So basically, all that a user needs is
  # 
  if [ -z "${SWITCHTCCPE}" ]
  then
-     module load CrayEnv ccpe/24.11-LUMI || exit
+     module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
  fi
  
  #
@@ -517,16 +518,16 @@ So basically, all that a user needs is
  
  module list
  
- srun … singularity exec $SIFCCPE <command> 
+ ccpe-srun … singularity exec $SIFCCPE <command> 
  ```
 
 Let us analyse the code a bit more:
 
-The block from line 13 till 53 is only executed if not in the 
+The block from line 13 till 53 in the extended version is only executed when not in the 
 context of the container, so the first time the batch script runs. 
 If it does not detect an environment from the container (the test on line 19,
 with `{local_ccpe_version}` replaced with the actual version string for
-the container as determined by the EasyConfig)
+the container as determined by the EasyConfig that generates this script)
 then:
 
 -   It first saves some environment variables set by the CCPE modules that should not be erased.
@@ -544,7 +545,7 @@ then:
 -   Next it restores the environment variables from the `ccpe` module as they have been erased by
     the `module purge`.
 
-Finally, on line 50m it restarts the batch script with all its arguments in the container. 
+Finally, on line 50, it restarts the batch script with all its arguments in the container. 
 This causes the batch script to execute again from the start, 
 but as `SWITCHTOCCPE` should be defined when we get here, and
 since we will now be in the container, all code discussed so far will be skipped.
@@ -561,6 +562,39 @@ On line 88, the script unsets `SLURM_EXPORT_ENV`. This environment variable woul
 set by Slurm if `--export` was used to submit the batch job, but we do not want this to
 propagate to job steps started with `srun` in the container, as there we want the full
 environment that the user builds in the job script to be propagated.
+
+The other interesting bit is line 90 in the long script or 25 in the shortened user 
+version of the script, where we want to start a job step running in a container. 
+`srun` wills start a command outside the container, but with a copy of the environment
+inherited from the container. So we need to call `singularity` to get in the container again.
+As the `singularity` command is in a standard system directory, it will be found also
+with the environment from the container active instead of the environment of the system.
+It in turn will then pass that environment to the container it starts, except for 
+some variables that are re-initialised in the container. These re-initialised variables
+include `PATH` and `LD_LIBRARY_PATH`, so even though it will appear as if all modules
+are still correctly loaded, the value of those 2 environment variables is no longer 
+correct. The solution is to inject the correct values into the container through the
+`SINGULARITYENV_PATH` and `SINGULARITYENV_LD_LIBRARY_PATH` environment variables and 
+this is precisely what the bash function `ccpe-run` does:
+
+``` bash
+function ccpe-srun() { SINGULARITYENV_PATH=$PATH SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH srun "$@" ; } ;
+```
+
+Alternatively, instead of using `ccpe-run`, one can simply use 
+
+``` bash
+SINGULARITYENV_PATH=$PATH SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH srun \
+    singularity exec $SIFCCPE hybrid_check
+```
+
+or
+
+``` bash
+export SINGULARITYENV_PATH=$PATH 
+export SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH 
+srun singularity exec $SIFCCPE hybrid_check
+```
 
 
 !!! Remark "The `salloc` command does not yet work in a container"

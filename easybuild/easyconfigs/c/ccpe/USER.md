@@ -111,17 +111,17 @@ e.g.,
 
 ```bash
 module load LUMI/24.03 partition/container
-eb ccpe-24.11-B-rocm-6.2-LUMI.eb
+eb ccpe-25.03-B-rocm-6.3-SP5-LUMI.eb
 ```
 
 Any more recent version of the LUMI stack on the system will also work for the installation.
 
 After that, the module installed by the EasyConfig (in the example,
-`ccpe/24.11-rocm-6.2-LUMI`) will be available in all versions of the `LUMI` stack on
+`ccpe/25.03-B-rocm-6.3-SP5-LUMI`) will be available in all versions of the `LUMI` stack on
 the system and in `CrayEnv`. So, e.g.,
 
 ```
-module load CrayEnv ccpe/24.11-B-rocm-6.2-LUMI
+module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI
 ```
 
 is enough to gain access to the container and all its tools explained on this page.
@@ -149,7 +149,8 @@ Cases that do give you a properly initiated shell, are `singularity exec bash -i
 and `singularity run`. These commands do source `/etc/bash.bashrc` but do not 
 read `/etc/profile`. But the latter shouldn't matter too much as that is usually
 used to set environment variables, and those that are typically set in that file
-and the files it calls, are typically fine for the container, or overwritten anyway
+and the files it calls, now come from the regular environment on LUMI and are
+fine for the container, or are overwritten anyway
 by the files sourced by `/etc/bash.bashrc`.
 
 
@@ -403,19 +404,28 @@ from a correctly initialised container with passing of the full environment:
  # those in `module list` and also fails to change variables that should be changed.
  #
  #SBATCH -J example-jobscript
- #SBATCH -p small
- #SBATCH -n 1
- #SBATCH -c 1
+ #SBATCH -p standard
+ #SBATCH -N 2
+ #SBATCH -n 32
+ #SBATCH -c 8
  #SBATCH -t 5:00
  #SBATCH -o %x-%j.md
  # And add line for account
  
+ ################################################################################
+ #
+ # Always start with this block.
+ # Its function is to restart the execution of the job script in the container
+ # so that you can write a regular job script as if you are working in the
+ # version of the Cray PE in the container.
+ #
+
  #
  # Ensure that the environment variable SWITCHTOCCPE and with it 
  #
  if [ -z "${SWITCHTOCCPE}" ]
  then
-     module load CrayEnv ccpe/24.11-B-rocm-6.2-LUMI || exit
+     module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
  fi
  
  #
@@ -423,15 +433,23 @@ from a correctly initialised container with passing of the full environment:
  #
  eval $SWITCHTOCCPE
  
+ ################################################################################
  #
- # Here you have the container environment and can simply work as you would normally do:
- # Build your environment and start commands. But you'll still have to be careful with
- # srun as whatever you start with srun will not automatically run in the container.
+ # Here you have the container environment and can simply work as you would 
+ # normally do:  Build your environment and start commands. But you'll still 
+ # have to be careful with srun as whatever you start with srun will not 
+ # automatically run in the container.
  #
  
- module list
+ # Always reconstruct the environment and don't rely on something inherited from
+ # the calling shell as this will be wrong if the job script is not launched from
+ # within the container.
+ module load LUMI/25.03 partition/C
+ module load lumi-CPEtools/1.2-cpeCray-25.03-hpcat-0.9
 
- srun <srun options> singularity exec $SIFCCPE <command>
+ # We also need a little trick with srun.
+ # Template: ccpe-srun <srun arguments> singularity exec $SIFCCPE <command>
+ ccpe-srun singularity exec $SIFCCPE hybrid_check
  ``` 
 
 What this job script does:
@@ -440,70 +458,102 @@ What this job script does:
 
     This is where you would insert your code that you want to run in the container.
 
--   When launching this batch script from within the container:
+-   The environment in the container after `eval $SWITCHTOCCPE`:
+  
+    -   When launching this batch script from within the container:
 
-    -   When launched with `--export` flag, the body will run in the environment of the calling container.
+        -   When launched without `--export` flag, the body will run in the environment of the calling container.
 
-        It does require that the job is started from a properly initialised container with active Lmod though,
-        as that currently sets the environment variable to detect if the container is properly initialised. 
+            It does require that the job is started from a properly initialised container with active Lmod though,
+            as that currently sets the environment variable to detect if the container is properly initialised. 
 
-        If you started the calling container with `ccpe-run`, there is no issue though. In other cases, you 
-        may have to execute `eval $INITCCPE`. But in general, if you were able to load Cray PE modules before
-        calling `sbatch`, you should be OK.
+            If you started the calling container with `ccpe-run`, there is no issue though. In other cases, you 
+            may have to execute `eval $INITCCPE`. But in general, if you were able to load Cray PE modules before
+            calling `sbatch`, you should be OK.
 
-    -   When launched using `sbatch --export=$EXPORTCCPE`, the body will run in a clean container environment,
-        but will not need to re-load the container module.
+        -   When launched using `sbatch --export=$EXPORTCCPE`, the body will run in a clean container environment,
+            but will not need to re-load the container module.
 
-    -   Behaviour with `--export=none`: As the container cannot be located, 
-        
-        ``` bash
-        if [ -z "${SWITCHTOCCPE}" ]
-        then
-            module load CrayEnv ccpe/24.11-B-rocm-6.2-LUMI || exit
-        fi
-        ```
+        -   Behaviour with `--export=none`: As the container cannot be located, 
+            
+            ``` bash
+            if [ -z "${SWITCHTOCCPE}" ]
+            then
+                module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
+            fi
+            ```
 
-        will first try to load the container module, and if successful, proceed creating a clean environment.
+            will first try to load the container module, and if successful, proceed creating a clean environment.
 
-        **Note that you need to adapt that line to the module you are actually using!**
+            **Note that you need to adapt that line to the module you are actually using!**
 
--   When launching this batch script from a regular system shell:
+    -   When launching this batch script from a regular system shell:
 
-    -   When launched using `sbatch --export=$EXPORTCCPE`, the body will run in a clean container environment.
+        -   When launched using `sbatch --export=$EXPORTCCPE`, the body will run in a clean container environment.
 
-    -   When launched with `--export` flag, `eval $SWITCHTOCCPE` will first try to clean the system
-        environment (and may fail during that phase if it cannot find the modules that you had loaded
-        when calling `sbatch`.)
+        -   When launched without `--export` flag, `eval $SWITCHTOCCPE` will first try to clean the system
+            environment (and may fail during that phase if it cannot find the modules that you had loaded
+            when calling `sbatch`.)
 
-        If the `ccpe` module was not loaded when calling the job script, the block 
-        
-        ``` bash
-        if [ -z "${SWITCHTOCCPE}" ]
-        then
-            module load CrayEnv ccpe/24.11-B-rocm-6.2-LUMI || exit
-        fi
-        ```
+            If the `ccpe` module was not loaded when calling the job script, the block 
+            
+            ``` bash
+            if [ -z "${SWITCHTOCCPE}" ]
+            then
+                module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
+            fi
+            ```
 
-        will try to take care of that. If the module can be loaded, the script will proceed with building
-        a clean container environment.
-        
-        **Note that you need to adapt that line to the module you are actually using!**
+            will try to take care of that. If the module can be loaded, the script will proceed with building
+            a clean container environment.
+            
+            **Note that you need to adapt that line to the module you are actually using!**
 
-    -   Behaviour with `--export=none`: As the container cannot be located, 
-        
-        ``` bash
-        if [ -z "${SWITCHTOCCPE}" ]
-        then
-            module load CrayEnv ccpe/24.11-B-rocm-6.2-LUMI || exit
-        fi
-        ```
+        -   Behaviour with `--export=none`: As the container cannot be located, 
+            
+            ``` bash
+            if [ -z "${SWITCHTOCCPE}" ]
+            then
+                module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
+            fi
+            ```
 
-        will first try to load the container module, and if successful, proceed creating a clean environment.
+            will first try to load the container module, and if successful, proceed creating a clean environment.
 
-        **Note that you need to adapt that line to the module you are actually using!**
+            **Note that you need to adapt that line to the module you are actually using!**
 
--   So in all cases you get a clean environment (which is the only logical thing to get) *except*
+    So in all cases you get a clean environment (which is the only logical thing to get) *except*
     if `sbatch` was already called from within the container without `--export` flag.
+
+-   To run the actual command, there we do not use `srun` but the function `ccpe-srun` defined in the 
+    container, and we must also ensure that we start the command in the singularity container.
+
+    The reason why we need `ccpe-srun` is that `PATH` and `LD_LIBRARY_PATH` are not passed to the
+    container, but overwritten by values set in the initialisation routines of the container. The
+    solution is to enforce the values of the calling environment via 
+    `SINGULARITYENV_PATH` and `SINGULARITYENV_LD_LIBRARY_PATH`. `ccpe-srun` is just a very small
+    bash funtion:
+
+    ``` bash
+    function ccpe-srun() {
+        SINGULARITYENV_PATH=$PATH SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH srun "$@" 
+    }
+    ```
+
+    so instead of using `cpe-srun` in the above example, one could also have used
+
+    ``` bash
+    SINGULARITYENV_PATH=$PATH SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH srun \
+      singularity exec $SIFCCPE hybrid_check
+    ```
+
+    or
+
+    ``` bash
+    export SINGULARITYENV_PATH=$PATH 
+    export SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH 
+    srun singularity exec $SIFCCPE hybrid_check
+    ```
 
 For technical information about how all this works under the hood (and it may 
 be important to understand this to always use the template correctly), check the
@@ -518,5 +568,5 @@ be important to understand this to always use the template correctly), check the
 
 -   `salloc` does not work in the container.
 
-    Workaround: USe `salloc` outside the container, then go into the container with 
+    Workaround: Use `salloc` outside the container, then go into the container with 
     `ccpe-run`.
