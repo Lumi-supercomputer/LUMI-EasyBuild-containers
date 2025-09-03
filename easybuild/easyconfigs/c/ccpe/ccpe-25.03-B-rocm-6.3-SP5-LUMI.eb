@@ -547,6 +547,13 @@ local_singularity_bind = ','.join( [ # Add bindings here!
     '/appl/local',
     f'{local_appl_lumi}:/appl/lumi',
 
+    # There are indirect dependiencies from MPI I/O to lustreapi library and it's dynamic dependencies from the host 
+    '/usr/lib64/liblustreapi.so',
+    '/usr/lib64/liblnetconfig.so.4',
+    '/usr/lib64/libnghttp2.so.14',
+    '/usr/lib64/libnl-3.so.200',
+    '/usr/lib64/libnl-route-3.so.200',
+
     # ROCm is mounted from a SquashFS file, module files and pkgconfig files are 
     # included in the container. 
     # Lmod may remove the trailing slash, but that doesn't seem to bother the correct
