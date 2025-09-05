@@ -393,7 +393,7 @@ Possible code to accomplish this is:
  #
  # Step 1: Make sure the container environment variables are set.
  # 
- if [ -z "${SWITCHTCCPE}" ]
+ if [ -z "${SWITCHTOCCPE}" ]
  then
      module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
  fi
@@ -501,7 +501,7 @@ So basically, all that a user needs is
  #
  # Step 1: Make sure the container environment variables are set.
  # 
- if [ -z "${SWITCHTCCPE}" ]
+ if [ -z "${SWITCHTOCCPE}" ]
  then
      module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
  fi
