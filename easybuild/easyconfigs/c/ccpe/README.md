@@ -697,6 +697,9 @@ Some elements of the EasyBuild recipes and modifications to the container:
     module --loc --redirect show libfabric | sed -e 's|\(.*libfabric.*\)/.*|\1|'
     ldd $(module --redirect show libfabric | grep '"LD_LIBRARY_PATH"' | awk -F'"' '{ print $4 }')/libfabric.so | grep libcxi | awk '{print $3}'
     ```
+    
+-   A bit inconsistent, but we copy `liblustreapi` and `liblnetconfig` from the system
+    to reduce the number of bind mounts, even though this may change as quickly as the libfabric libraries.
 
 -   ROCm: ROCm 6.2.4, either bind mounted from a SquashFS file or installed in the 
     container via `zypper`.
@@ -822,6 +825,9 @@ Other elements in the build:
     ldd $(module --redirect show libfabric | grep '"LD_LIBRARY_PATH"' | awk -F'"' '{ print $4 }')/libfabric.so | grep libcxi | awk '{print $3}'
     ```
     
+-   A bit inconsistent, but we copy `liblustreapi` and `liblnetconfig` from the system
+    to reduce the number of bind mounts, even though this may change as quickly as the libfabric libraries.
+    
 -   The 25.03 containers need the xpmem libraries and module from the system which
     is done through bind mounts (could in principle replace with copying from the
     system).
@@ -852,7 +858,7 @@ Other elements in the build:
     necessary links.
 
 -   ROCm: Either bound from a SquashFS file, installed from tar files or installed
-    via `zyppr`, depending on the container.
+    via `zypper`, depending on the container.
 
 -   Slurm support is still provided as much as possible by binding files from the system
     to ensure that the same version is used in the container as LUMI uses, as otherwise

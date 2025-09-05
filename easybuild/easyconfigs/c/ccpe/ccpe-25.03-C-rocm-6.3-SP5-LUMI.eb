@@ -148,6 +148,10 @@ From: {local_sif}
     # that gives issues with cray-pals
     /usr/lib64/libjansson.so.4.14.0
 
+    # Get Lustre libraries from the system
+    /usr/lib64/liblustreapi.so.1.0.0
+    /usr/lib64/liblnetconfig.so.4.0.0
+
     /etc/group
     /etc/passwd
     
@@ -174,6 +178,11 @@ From: {local_sif}
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage rsync # Needed for ROCm installation...
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage vim
 
+    # Support for Lustre also requires some SUSE packages but they may already be in the container
+    # In fact, we outcomment since in the current container they are present.
+    # zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libnghttp2-14
+    # zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libnl3-200
+    
     # The container lacks locales except for C and POSIX which causes too many issues, including some
     # Python packages for EasyBuild that do not even install or crash when running.    
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage glibc-locale
@@ -203,6 +212,11 @@ From: {local_sif}
     ln -s /opt/cray/pals/1.3.2 /opt/cray/pals/default
     echo "/opt/cray/pals/default/lib" >/etc/ld.so.conf.d/cray-pals.conf
     chmod 644 /etc/ld.so.conf.d/cray-pals.conf
+    
+    # Create the symbolic links for the Lustre libraries
+    #ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1   # Turns out this is done automatically????
+    ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so
+    #ln -s /usr/lib64/liblnetconfig.so.4.0.0 /usr/lib64/liblnetconfig.so.4 # Turns out this is done automatically????
     
     # Tweak the ROCm and AMD modules
     sed -e 's|{local_rocm_version}|{local_c1_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/core/rocm/{local_c1_rocm_version}.lua
