@@ -162,7 +162,7 @@ else
     if [ -z $SIFPYTORCH ] || [ ! -f $SIFPYTORCH ]
     then
         >2& echo "SIFPYTORCH is undefined or wrong, use this command with the PyTorch module properly loaded!"
-        exit
+        exit 1
     fi
 
     singularity exec $SIFPYTORCH bash "$@"
@@ -304,13 +304,13 @@ else
     # Not running in a container. We could simply use the pip script,
     # or start in the container which is what we will do.
 
-    if [ -z $SIFJAX ] || [ ! -f $SIFJAX ]
+    if [ -z $SIFPYTORCH ] || [ ! -f $SIFPYTORCH ]
     then
-        >&2 echo "SIFJAX is undefined or wrong, use this command with the jax module properly loaded!"
-        exit
+        >&2 echo "SIFPYTORCH is undefined or wrong, use this command with the jax module properly loaded!"
+        exit 1
     fi
 
-    singularity exec $SIFJAX pip3 list
+    singularity exec $SIFPYTORCH pip3 list
 fi
 
 """.replace( '$', '\\$' )
@@ -528,25 +528,25 @@ sanity_check_commands = [
     f'python{local_c_python_mm} --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
     # Check pip and deepspeed version
     (f'echo "Testing pip wrapper script and DeepSpeed version (expected {local_c_DeepSpeed_version})" ; '
-    f'pip freeze | grep deepspeed | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_DeepSpeed_version}"'),    
+    f'pip --disable-pip-version-check freeze | grep deepspeed | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_DeepSpeed_version}"'),    
     # Check pipMAJOR and transformers version
     (f'echo "Testing pip{local_c_python_m} wrapper script and transformers version (expected {local_c_transformers_version})" ; '
-    f'pip{local_c_python_m} freeze | grep transformers | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_transformers_version}"'),    
+    f'pip{local_c_python_m} --disable-pip-version-check freeze | grep transformers | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_transformers_version}"'),    
     # Check pipMAJOR.MINOR and deepspeed version
     (f'echo "Testing pip{local_c_python_mm} wrapper script and DeepSpeed version (expected {local_c_DeepSpeed_version})" ; '
-    f'pip{local_c_python_mm} freeze | grep deepspeed | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_DeepSpeed_version}"'),    
+    f'pip{local_c_python_mm} --disable-pip-version-check freeze | grep deepspeed | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_DeepSpeed_version}"'),    
     # Check pip and xformers version
     (f'echo "Testing pip wrapper script and xformers version (expected {local_c_xformers_version})" ; '
-    f'pip list | grep xformers | awk \'{{ print $2}}\' | grep -q "{local_c_xformers_version}"'),    
+    f'pip --disable-pip-version-check list | grep xformers | awk \'{{ print $2}}\' | grep -q "{local_c_xformers_version}"'),    
     # Check pip and flashattention version
-    (f'echo "Testing pip wrapper script and xformers version (expected {local_c_flashattention_version})" ; '
-    f'pip list | grep flash_attn | awk \'{{ print $2}}\' | grep -q "{local_c_flashattention_version}"'),    
+    (f'echo "Testing pip wrapper script and flash_attn version (expected {local_c_flashattention_version})" ; '
+    f'pip --disable-pip-version-check list | grep flash_attn | awk \'{{ print $2}}\' | grep -q "{local_c_flashattention_version}"'),    
     # Check pip and vllm version
-    (f'echo "Testing pip wrapper script and xformers version (expected {local_c_vllm_version})" ; '
-    f'pip list | grep vllm | awk \'{{ print $2}}\' | grep -q "{local_c_vllm_version}"'),    
+    (f'echo "Testing pip wrapper script and vllm version (expected {local_c_vllm_version})" ; '
+    f'pip --disable-pip-version-check list | grep vllm | awk \'{{ print $2}}\' | grep -q "{local_c_vllm_version}"'),    
     # Check pip and torch version
     (f'echo "Testing pip wrapper script and torch version (expected {local_c_PyTorch_version})" ; '
-    f'pip list | egrep "^torch " | awk \'{{ print $2}}\' | sed -e \'s|\\+ro.*||\' | grep -q "{local_c_PyTorch_version}"'),    
+    f'pip --disable-pip-version-check list | egrep "^torch " | awk \'{{ print $2}}\' | sed -e \'s|\\+ro.*||\' | grep -q "{local_c_PyTorch_version}"'),    
     # Check if the accelerate wrapper script can run accelerate
     'echo "Checking if the accelerate wrapper can run accelerate" ; accelerate -h',
     # Check if the huggingface-cli wrapper script can run huggingface-cli
