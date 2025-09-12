@@ -95,7 +95,7 @@
 
 Incomplete!
 
-### Changes made for the 20250404 PyTorch container
+### Changes made for the 20250404 and later PyTorch containers
 
 Some of those changes were likely overdue!
 
@@ -113,9 +113,19 @@ Some of those changes were likely overdue!
 -   In late July 2025 the `list-packages` script used by CSC was also added to the
     container, even though it is basically just a `pip list` and could even be implemented
     using the `pip` wrapper script.
+    
+-   At the same time we also added python and pip wrapper scripts and wrapper scripts 
+    to some commands in the container similar to those in the corresponding CSC modules.
+    
+    There is a difference however when virtual environments are used. With the CSC modules,
+    the `python` wrapper script can also be used to create a virtual environment. This 
+    will not work with the wrapper scripts in these modules, as the virtual environment
+    is already built into the module so that it can be squashed into a SquashFS file 
+    that is friendlier to the Lustre file system than a regular virtual environment.
 
--   TODO: Check with Samuel if we still need to bind cxi as there is a libfabric in 
-    the container that links to a different libcxi.
+-   Binding libfabric and the cxi provider is no longer needed as the containers contain
+    their own libfabric and cxi provide that should offer better stability with RCCL
+    than the version on the system.
 
 
 
