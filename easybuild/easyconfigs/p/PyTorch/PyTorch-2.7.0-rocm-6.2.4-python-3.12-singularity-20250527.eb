@@ -1,7 +1,7 @@
 # Developed by Kurt Lust and Mihkel Tiks for LUMI
 #DOC Contains PyTorch 2.7.0 with torchaudio 2.7.0, torchdata 0.10.0, torchtext 0.18.0+cpu,
 #DOC torchvision 0.22.0 GPU version, DeepSpeed 0.16.8,  flash-attention 2.7.3, transformers 4.52.3,
-#DOC xformers 0.0.31+39addc86.d20250526 and vllm 0.8.5+rocm624, on Python 3.12 and ROCm 6.2.3.
+#DOC xformers 0.0.31+39addc86.d20250526 and vllm 0.8.5+rocm624, on Python 3.12 and ROCm 6.2.4.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
 #DOC
 #DOC This version also includes a pre-set virtual environment, but the module together with the 
@@ -114,6 +114,7 @@ additions!
 docurls = [
     'DeepSpeed web site: https://www.deepspeed.ai/',
     'Latest LUMI AI training: https://lumi-supercomputer.github.io/AI-latest',   
+    'LUMI AI Guide: https://github.com/Lumi-supercomputer/LUMI-AI-Guide',
 ]
 
 toolchain = SYSTEM
