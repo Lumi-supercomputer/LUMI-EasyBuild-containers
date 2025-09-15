@@ -88,7 +88,7 @@ else
     if [ -z $SIFJAX ] || [ ! -f $SIFJAX ]
     then
         >&2 echo "SIFJAX is undefined or wrong, use this command with the jax module properly loaded!"
-        exit
+        exit 1
     fi
 
     singularity exec $SIFJAX bash "$@"
@@ -111,7 +111,7 @@ local_bin_python = """
 if [ -z $SIFJAX ] || [ ! -f $SIFJAX ]
 then
     >&2 echo "SIFJAX is undefined or wrong, use this command with the PyTorch module properly loaded!"
-    exit
+    exit 1
 fi
 
 #REAL_PYTHON="${BASH_SOURCE[0]}"  # Full path + name of the file being executed, which can be the symbolic link.
@@ -233,7 +233,7 @@ else
     if [ -z $SIFJAX ] || [ ! -f $SIFJAX ]
     then
         >&2 echo "SIFJAX is undefined or wrong, use this command with the jax module properly loaded!"
-        exit
+        exit 1
     fi
 
     singularity exec $SIFJAX pip3 list
@@ -309,13 +309,21 @@ sanity_check_paths = {
 }
 
 sanity_check_commands = [
+    # Full syntax check of bash scripts
+    'echo "Syntax check of start-shell"     ; bash -n start-shell',
+    'echo "Syntax check of python"          ; bash -n python',
+    'echo "Syntax check of make-squashfs"   ; bash -n make-squashfs',
+    'echo "Syntax check of unmake-squashfs" ; bash -n unmake-squashfs',
+    'echo "Syntax check of list-packages"   ; bash -n list-packages',
+    'echo "Syntax check of conda-python-simple"      ; bash -n %(installdir)s/runscripts/conda-python-simple',
+    # Test import of numpy , scipy and jax.
     'singularity exec $SIFJAX python -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"',
     # Testing wrapper scripts
     """start-shell -c '/runscripts/conda-python-simple -c "import numpy ; import scipy ; import jax ; print( f'"'JAX {jax.__version__}, NumPy {numpy.__version__}, SciPy {scipy.__version__}.'"' )"' """,
     # Testing the CSC-style wrapper scripts
     'list-packages',
-    'pip list',
-    f'pip{local_c_python_m}  list',
+    'pip --disable-pip-version-check list',
+    f'pip{local_c_python_m} --disable-pip-version-check  list',
     # Check python wrapper script and reported version
     ('echo "Testing Python wrapper script and version" ; '
     f'python --version | sed -e \'s|.* \([[:digit:]]\.[[:digit:]]\+\).*|\\1|\' | grep -q "{local_c_python_mm}"'),
@@ -330,10 +338,10 @@ sanity_check_commands = [
     f'python -c \'import jax ; print(jax.__version__)\' | grep -q {local_c_jax_version}'),
     # Check pip and numpy version
     (f'echo "Testing pip wrapper script and numpy version (expected {local_c_NumPy_version})" ; '
-    f'pip freeze | grep numpy | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_NumPy_version}"'),    
+    f'pip --disable-pip-version-check freeze | grep numpy | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_NumPy_version}"'),    
     # Check pipMAJOR and scipy version
     (f'echo "Testing pip{local_c_python_m} wrapper script and SciPy version (expected {local_c_SciPy_version})" ; '
-    f'pip{local_c_python_m} freeze | grep scipy | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_SciPy_version}"'),    
+    f'pip{local_c_python_m} --disable-pip-version-check freeze | grep scipy | sed -e \'s|.*=\(.*\)|\\1|\' | grep -q "{local_c_SciPy_version}"'),    
 ]
 
 modextravars = {
