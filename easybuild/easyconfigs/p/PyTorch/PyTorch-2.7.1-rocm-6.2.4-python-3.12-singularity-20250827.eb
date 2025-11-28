@@ -1,6 +1,6 @@
 # Developed by Kurt Lust and Mihkel Tiks for LUMI
 #DOC Contains PyTorch 2.7.1 with torchaudio 2.7.1, torchdata 0.10.0, torchtext 0.18.0+cpu,
-#DOC torchvision 0.22.0 GPU version, DeepSpeed 0.16.8,  flash-attention 2.7.3, transformers 4.52.3,
+#DOC torchvision 0.22.1 GPU version, DeepSpeed 0.17.4,  flash-attention 2.7.3, transformers 4.55.3,
 #DOC xformers 0.0.32+09d42ac5.d20250822 and vllm 0.10.1+rocm624, on Python 3.12 and ROCm 6.2.4.
 #DOC It also contains a fix for an issue with AITER (AI Tensor Engine for ROCm) present in some earlier containers.
 #DOC The container also fully assists the procedure to add extra packages in a Python virtual environment.
