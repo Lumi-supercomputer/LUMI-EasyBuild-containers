@@ -28,7 +28,7 @@ local_c_rocm_major_minor = '.'.join( local_c_rocm_version.split('.')[:2] )
 
 name =          'ccpe'
 version =       '25.09'
-versionsuffix = f'-noRocm-{local_c_rocm_major_minor}-SP5-LUMI'
+versionsuffix = f'-noRocm-{local_c_rocm_major_minor}-SP6-LUMI'
 
 local_sif = f'cpe-{version}-SP6.sif'
 
@@ -178,6 +178,7 @@ From: {local_sif}
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage groff
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage rsync # Needed for ROCm installation...
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage vim
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage which
 
     # Support for Lustre also requires some SUSE packages but they may already be in the container
     # In fact, we outcomment since in the current container they are present.
@@ -232,7 +233,7 @@ From: {local_sif}
     mkdir -p /opt/cray/modulefiles/libfabric
     touch /usr/lib64/libcxi.so.1
     # XPMEM mounts
-    mkdir -p /opt/cray/modulefiles/xpmem/2.8.2-1.0_5.1__g84a27a5.shasta
+    mkdir -p /opt/cray/modulefiles/xpmem
     mkdir -p /opt/cray/xpmem
     touch /usr/lib64/pkgconfig/cray-xpmem.pc
     # PALS mount
@@ -603,9 +604,9 @@ local_singularity_bind = ','.join( [ # Add bindings here!
     '/usr/lib64/libcxi.so.1',          # ldd $(module --redirect show libfabric | grep '"LD_LIBRARY_PATH"' | awk -F'"' '{ print $4 }')/libfabric.so | grep libcxi | awk '{print $3}'
 
     # XPMEM binding
-    '/opt/cray/modulefiles/xpmem/2.8.2-1.0_5.1__g84a27a5.shasta',  # module --loc --redirect show xpmem
-    '/opt/cray/xpmem',                                             # echo $(dirname `pkg-config --variable=prefix cray-xpmem`)
-    '/usr/lib64/pkgconfig/cray-xpmem.pc',                          # echo "$(pkg-config --variable=pcfiledir cray-xpmem)/cray-xpmem.pc"
+    '/opt/cray/modulefiles/xpmem',        # `module --loc --redirect show xpmem` but just take the directory
+    '/opt/cray/xpmem',                    # echo $(dirname `pkg-config --variable=prefix cray-xpmem`)
+    '/usr/lib64/pkgconfig/cray-xpmem.pc', # echo "$(pkg-config --variable=pcfiledir cray-xpmem)/cray-xpmem.pc"
 
     # PALS binding
     #'/opt/cray/pe/lmod/modulefiles/core/cray-pals',               # The modules on the system are wrong
