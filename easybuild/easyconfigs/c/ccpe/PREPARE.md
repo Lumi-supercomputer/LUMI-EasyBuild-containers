@@ -23,6 +23,11 @@ give you a file (downloadUrls.txt) with the `curl` commands that you can use on 
 LUMI login nodes to download the files. The links are only valid for 24 hours and should
 not be passed to others.
 
+For 25.09, this procedure has changed again and it is no longer possible to download a complete 
+container. Instead a template for a docker recipe has been given that will download all necessary
+packages. One issue here is the limited validity of the token that should be used to download
+the packages, so you may not even be able to download them all in time.
+
 
 ## 24.11
 
@@ -189,3 +194,108 @@ not be passed to others.
         tar -xf ../rocm-6.3.4.tar
         mksquashfs rocm-6.3.4 ../rocm-6.3.4.squashfs -processors 16
         ```
+
+## 25.09 (SP6 version)
+
+-   We start from a container prepared by Alfio Lazarro.
+
+    The correct one turned out to be `cpe_sles15_sp6_x86_64_runko.sif` as
+    `ccpe_sles15_sp6_x86_64.sif` did not contain all modulefiles.
+
+-   Now we add the basis for Slurm support and a license check to the container:
+
+    -   Create a singularity definition file `cpe-25.09-SP6.def`
+
+        ```
+        Bootstrap: localimage
+
+        From: cpe-25.09-SP6-orig.sif
+
+        %files
+
+            /etc/group
+            /etc/passwd
+
+        %post
+
+        cat > /.singularity.d/env/00-license.sh << EOF
+        if [ ! -f /etc/slurm/slurm.conf ] || ! /usr/bin/grep -q 'ClusterName=lumi\$' /etc/slurm/slurm.conf
+        then 
+            echo -e 'This container was prepared by the LUMI User Support Team and can only legally' \
+                    '\nbe used on LUMI by LUMI users with a personal active account. Using this' \
+                    '\ncontainer on other systems than LUMI or by other than registered active users,' \
+                    '\nis considered a breach of the "LUMI General Terms of Use", point 4.\n' \
+                    '\nBy using the container you agree to the license' \
+                    '\nhttps://downloads.hpe.com/pub/softlib2/software1/doc/p1796552785/v113125/eula-en.html.\n' \
+                    '\nIf you see this message on LUMI, then most likely your bindings are not OK.' \
+                    '\nPlease also bind mount /etc/slurm/slurm.conf in the container.'
+            
+            # Break off the initialisation of the container.
+            exit
+        fi
+        EOF
+
+        chmod a+rx /.singularity.d/env/00-license.sh
+        ```
+
+    -   Do the build process with singularity:
+
+        ```
+        ml LUMI PRoot
+        export SINGULARITY_TMPDIR=/tmp
+        export SINGULARITY_CACHEDIR=/tmp
+        singularity build cpe-25.09-SP6.sif cpe-25.09-SP6.def
+        ```
+
+-   If you want to build a container using EasyBuild with ROCm to extract the ROCm version
+    afterwards, we first need to prepare a basic software stack as otherwise the commands
+    to initialise the container will fail. This should be done on uan06, with umask set
+    to 0002.
+
+    -   Run
+
+        ``` bash
+        mkdir -p /appl/lumi/ccpe/appl/25.09-6.4
+        cd /appl/lumi/ccpe/appl/25.09-6.4
+        git clone https://github.com/Lumi-supercomputer/LUMI-SoftwareStack.git
+        git clone https://github.com/Lumi-supercomputer/LUMI-EasyBuild-contrib.git
+        # And if the necessary branches are already prepared...
+        cd LUMI-SoftwareStack && git checkout -b stack/25.09-6.4 && cd -
+        cd LUMI-EasyBuild-contrib && git checkout -b stack/25.09-6.4 && cd -
+        ```
+
+    -   We do have a chicken-and-egg problem now though. Our container EasyConfigs do a number
+        of tests that will fail if the `prepare_LUMI.sh` script is not run, but that script
+        will fail to create the correct links if it is run outside the container. 
+
+        So there is currently no other solution than to build the container with sanity checks
+        disabled in the EasyConfig, start the container and run the script there.
+
+        So in the container:
+
+        ``` bash
+        umask 0002
+        cd /appl/lumi/LUMI-SoftwareStack/scripts
+        ./prepare_LUMI.sh
+        ```
+
+-   Preparing ROCm:
+
+    -   Build the '-C'-version of the container with ROCm built in.
+
+    -   Create a tar-file `rocm-6.4.4.tar` in `/opt`: 
+
+        ```
+        tar -cf $WORKDIR/rocm-6.4.4.tar rocm-6.4.4
+        ```
+
+    -   Outside the container:
+  
+        ```
+        umask 002
+        cd $WORKDIR
+        mkdir tmp && cd tmp
+        tar -xf ../rocm-6.4.4.tar
+        mksquashfs rocm-6.4.4 ../rocm-6.4.4.squashfs -processors 16
+        ```
+
