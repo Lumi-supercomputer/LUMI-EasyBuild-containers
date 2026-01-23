@@ -1,5 +1,10 @@
 # User instructions for the HPE CPE containers.
 
+!!! Warning "Not working at the moment"
+    The container EasyConfigs are not fully functional as several modifications
+    are needed after the January 2026 update. As the 25.03 and 25.09 programming
+    environments are now on the system, repair does not have a high priority.
+
 !!! Warning "These containers are beta software"
     They are made available by HPE without guarantee of suitability for your
     purpose, as a way for users to test programming environments that are not
