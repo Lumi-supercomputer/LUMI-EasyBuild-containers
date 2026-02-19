@@ -1,7 +1,5 @@
 # ROCm container user instructions
 
-**BETA VERSION, problems are possible and they may not be solved quickly.**
-
 The rocm container is developed by AMD specifically for LUMI and contains the
 necessary parts explore ROCm. The use is rather limited because at the moment
 the methods that can be used to build upon an existing container are rather
@@ -13,8 +11,8 @@ and it is also possible in some cases to extend them using the so-called
 
 **It is entirely normal that some features in some of the containers will not work.
 Each ROCm driver supports only particular versions of packages. E.g., the ROCm 
-driver from ROCm 6.0.3 is only guaranteed to support ROCm versions between 5.6 and 
-6.2 and hence problems can be expected with ROCm 5.5 or older and ROCm 6.3 or newer.
+driver from ROCm(tm) 6.3.4 is only guaranteed to support ROCm(tm) versions between 6.1 and 
+7.0 and hence problems can be expected with older or newer ROCm(tm) versions.
 There is nothing LUMI
 support can do about it. Only one driver version can be active on the system,
 and installing a newer version depends on other software on the system also and
