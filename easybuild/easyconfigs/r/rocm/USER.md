@@ -1,6 +1,15 @@
 # ROCm container user instructions
 
-**BETA VERSION, problems are possible and they may not be solved quickly.**
+!!! Note "Future of these containers"
+    It is not clear yet if we will be able to offer equivalent containers in
+    the future. The containers developed before the system update of 
+    January 2026 were based on SUSE Linux and hence very close to the system.
+    However, the [LUMI AI factory](https://lumi-ai-factory.eu/) has taken over some of
+    the development of containers mainly meant for AI use on LUMI. However,
+    they work with a different basis (and containers based on Ubuntu) so it
+    may not be possible to, e.g., inject parts from the HPE Cray Programming
+    Environment if needed. See also the 
+    [LUMI AI Factory AI Software Environment documentation](https://docs.lumi-supercomputer.eu/laif/software/ai-environment/).
 
 The rocm container is developed by AMD specifically for LUMI and contains the
 necessary parts explore ROCm. The use is rather limited because at the moment
@@ -13,12 +22,13 @@ and it is also possible in some cases to extend them using the so-called
 
 **It is entirely normal that some features in some of the containers will not work.
 Each ROCm driver supports only particular versions of packages. E.g., the ROCm 
-driver from ROCm 6.0.3 is only guaranteed to support ROCm versions between 5.6 and 
-6.2 and hence problems can be expected with ROCm 5.5 or older and ROCm 6.3 or newer.
+driver from ROCm 6.3.4 is only guaranteed to support ROCm versions between 6.1 and 
+7.0 and hence problems can be expected with older or newer containers.
 There is nothing LUMI
 support can do about it. Only one driver version can be active on the system,
 and installing a newer version depends on other software on the system also and
 is not as trivial as it would be on a PC.**
+
 
 ## Use via EasyBuild-generated modules
 
@@ -137,6 +147,9 @@ with cotainr is compatible with the version of ROCm in the container that you us
 image.
 
 ??? Example "PyTorch with cotainr (click to expand)"
+    Note that this is an old example that still needs updating with versions of 
+    software appropriate for the current GPU drivers, but it shows the idea.
+
     To start, create a Yaml file to tell cotainr which software should be installed.
     As an example, consider the file below which we name `py312_rocm603_pytorch.yml`  
 
@@ -168,7 +181,7 @@ image.
     Now we are ready to generate a new Singularity `.sif` file with this defintion:
 
     ```bash
-    module load LUMI
+    module load LUMI/24.03
     module load cotainr
     cotainr build my-new-image.sif --base-image=/appl/local/containers/sif-images/lumi-rocm-rocm-6.0.3.sif --conda-env=py312_rocm603_pytorch.yml
     ```
