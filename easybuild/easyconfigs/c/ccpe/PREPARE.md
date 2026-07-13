@@ -301,6 +301,10 @@ the packages, so you may not even be able to download them all in time.
 
 ## 26.03
 
+We have chosen to put a lot of software in the container already, even though it likely makes it
+non-portable across system updates. But like this, one can start developing with the container
+with minimal bindings, making it easier and less error-prone to use.
+
 -   We started from a container prepared by Alfio Lazzaro: cpe_26.03.01_sles15_sp7_x86_64.sif
 
 -   Rather than using bindings, we copied a number of files from LUMI into the container:
@@ -370,7 +374,7 @@ the packages, so you may not even be able to download them all in time.
         zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libcurl-devel
         ```
 
--   The above steps result in the following definition file (`cpe_26.03.01_sles15_sp7_LUST.def`):
+-   The above steps result in the following definition file (`cpe_26.03.01_sles15_sp7_LUMI_26.01.def`):
 
     ```
     Bootstrap: localimage
