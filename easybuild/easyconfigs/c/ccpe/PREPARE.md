@@ -299,3 +299,250 @@ the packages, so you may not even be able to download them all in time.
         mksquashfs rocm-6.4.4 ../rocm-6.4.4.squashfs -processors 16
         ```
 
+## 26.03
+
+-   We started from a container prepared by Alfio Lazzaro: cpe_26.03.01_sles15_sp7_x86_64.sif
+
+-   Rather than using bindings, we copied a number of files from LUMI into the container:
+
+    -   Missing LUA files/directories: `/usr/share/lua/5.3/`, `/usr/bin/lua5.3`, `/usr/lib64/lua/5.3/`.
+
+    -   Munge: Used by Slurm and possibly other packages: `/usr/lib64/libmunge.so.2.0.0`.
+        Optionally, we could also copy `/usr/bin/munge`, the corresponding command.
+  
+        And also link `libmunge.so.2` to this file.
+
+    -   `libdrm`: Not entirely sure if we really need this as this is part of the Linux graphics stack.
+
+-   Things that we copy from the host system to reduce binding complexity, but that will require
+    a rebuild after a system update:
+
+    -   libfabric from the host system: `/opt/cray/libfabric`, `/usr/lib64/libcxi.so.1` 
+        and `/opt/cray/modulefiles/libfabric`
+
+        The `libfabric` module adds libfabric to `LD_LIBRARY_PATH` and should always be loaded
+        when using MPI, so it is not needt to add the library directory to the default search
+        path for library by creating a suitable configuration file in `/etc/ld.so.conf.d`.
+  
+    -   XPMEM: Library versions should match the kernel module which is why a rebuild may be needed.
+
+        -   Module: Result of `module --loc --redirect show xpmem`: /opt/cray/modulefiles/xpmem/2.11.5-1.3_g73ade43320bc
+
+        -   PKG file: Result of `pkg-config --variable=pcfiledir cray-xpmem`: `/usr/lib64/pkgconfig`, so need the file
+            `/usr/lib64/pkgconfig/cray-xpmem.pc`
+
+        -   The libraries themselves: `/usr/lib64/libxpmem.a` and `/usr/lib64/libxpmem.so.0.0.0` and create 
+            symbolic links `libxpmem.so` and `libxpmem.so.0` to it.
+
+            It looks like this library is usually linked as `libxpmem.so.0` so we could also just copy that file.,
+
+        -   Add the directory with the xpmem libraries to the default search path by creating a suitable configuration
+            file in `/etc/ld.so.conf.d`.
+
+    -   Cray PALS: There is only one version of it on LUMI which suggests that it also depends on the OS.
+
+        -  According to the script from Alfio:
+
+           -   Module: From `module --loc --redirect show cray-pals`: `/opt/cray/pe/lmod/modulefiles/core/cray-pals/1.2.12.lua`
+     
+           -   Installation directory: From `dirname `module --redirect show cray-pals | grep PATH | awk -F'"' 'NR==1 { printf($4) }'``:
+               `/opt/cray/pe/pals/1.2.12`.
+
+           -   Add `/usr/lib64/libjansson.so.4`.
+
+        -   But it looks like it is done differently on LUMI as there is no `cray-pals` module loaded  in the login environment and as there
+            is also a cray-pals installation in `/opt/cray/pals` that appears to be newer. The libraries of that
+            Cray PALS installation are also in the default system search path. So we follow this approach instead.
+
+            -   Need `/opt/cray/pals/1.6` and possibly `/opt/cray/pals/lmod` (though the module is 
+                currently not even in the search path on LUMI), and then a symbolic link `default`.
+
+            -   And need to add a suitable configuration file in `/etc/ld.so.conf.d`.
+
+    -   The container that the HPE CoE provided, had a more complete SUSE installation than containers we got earlier,
+        but we still needed to install some development packages that our software stack builds upon for `libopenssl` 
+        and `libcurl`:
+
+        ``` bash
+        zypper ref
+
+        zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libopenssl-1_1-devel
+        zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libcurl-devel
+        ```
+
+-   The above steps result in the following definition file (`cpe_26.03.01_sles15_sp7_LUST.def`):
+
+    ```
+    Bootstrap: localimage
+
+    From: cpe_26.03.01_sles15_sp7_x86_64.sif
+
+    %files
+
+    # User/group needed for Slurm
+    /etc/group
+    /etc/passwd
+
+    # Create mount points to make building easier
+
+    #
+    # Phase 1 - Software that can persist across an OS update
+    #
+
+    # Complete the LUA installation
+    /usr/bin/lua5.3
+    /usr/lib64/lua/5.3/
+    /usr/share/lua/5.3/
+
+    # libmunge
+    /usr/lib64/libmunge.so.2.0.0
+
+    # libdrm
+    /usr/lib64/libdrm.so.2.4.0
+    /usr/lib64/libdrm_amdgpu.so.1.0.0
+    /usr/share/libdrm
+
+    #
+    # Phase 2 - Software that depends on other software outside the container
+    #
+
+    # libfabric and CXI provider
+    /opt/cray/libfabric
+    /usr/lib64/libcxi.so.1
+    /opt/cray/modulefiles/libfabric
+
+    # XPMEM
+    /opt/cray/modulefiles/xpmem/2.11.5-1.3_g73ade43320bc # module --loc --redirect show xpmem
+    /usr/lib64/pkgconfig/cray-xpmem.pc # Location from pkg-config --variable=pcfiledir cray-xpmem
+    /usr/lib64/libxpmem.a
+    /usr/lib64/libxpmem.so.0.0.0
+
+    # Cray PALS
+    /opt/cray/pals/1.6
+    /opt/cray/pals/lmod
+    /usr/lib64/libjansson.so.4 # Missing library in the container.
+
+    ###################################################################################################
+
+    %post
+
+    #
+    # Copy protection of the container
+    #
+
+    # Warning not to move the container to a different system.
+    cat > /.singularity.d/env/00-license.sh << EOF
+    if [ ! -f /etc/slurm/slurm.conf ] || ! /usr/bin/grep -q -e 'ClusterName=lumi\$' -e 'ClusterName=snowflake\$' /etc/slurm/slurm.conf
+    then
+        echo -e 'This container was prepared by the LUMI User Support Team and can only legally' \
+                '\nbe used on LUMI by LUMI users with a personal active account. Using this' \
+                '\ncontainer on other systems than LUMI or by other than registered active users,' \
+                '\nis considered a breach of the "LUMI General Terms of Use", point 4.\n' \
+                '\nBy using the container you agree to the license' \
+                '\nhttps://downloads.hpe.com/pub/softlib2/software1/doc/p1796552785/v113125/eula-en.html.\n' \
+                '\nIf you see this message on LUMI, then most likely your bindings are not OK.' \
+                '\nPlease also bind mount /etc/slurm/slurm.conf in the container.'
+
+        # Break off the initialisation of the container.
+        exit
+    fi
+    EOF
+
+    chmod a+rx /.singularity.d/env/00-license.sh
+
+    #
+    # Phase 1 - Software that can persist across an OS update
+    #
+
+    # Finish libmunge
+    ln -s /usr/lib64/libmunge.so.2.0.0 /usr/lib64/libmunge.so.2
+
+    # Finish libdrm
+    ln -s /usr/lib64/libdrm.so.2.4.0 /usr/lib64/libdrm.so.2
+    ln -s /usr/lib64/libdrm.so.2     libdrm.so.2
+    ln -s /usr/lib64/libdrm_amdgpu.so.1.0.0 /usr/lib64/libdrm_amdgpu.so.1
+    ln -s /usr/lib64/libdrm_amdgpu.so.1     libdrm_amdgpu.so.1
+
+    #
+    # Phase 2 - Software that depends on other software outside the container
+    #
+
+    # Finish XPMEM
+    # Make sure the libraries are in the default search path
+    ln -s /usr/lib64/libxpmem.so.0.0.0 /usr/lib64/libxpmem.so
+    ln -s /usr/lib64/libxpmem.so.0.0.0 /usr/lib64/libxpmem.so.0
+    echo "/opt/cray/xpmem/default/lib64" >/etc/ld.so.conf.d/cray-xpmem.conf
+    chmod 644 /etc/ld.so.conf.d/cray-xpmem.conf
+
+    # Finish PALS
+    ln -s /opt/cray/pals/1.6 /opt/cray/pals/default
+    /bin/rm -f /opt/cray/pals/1.6/lib/libpals.so /opt/cray/pals/1.6/lib/libpals.so.0
+    ln -s /opt/cray/pals/1.6/liblibpals.so.0.0.0 /opt/cray/pals/1.6/lib/libpals.so.0 
+    ln -s /opt/cray/pals/1.6/liblibpals.so.0.0.0 /opt/cray/pals/1.6/lib/libpals.so
+    /bin/rm -f /opt/cray/pals/1.6/bin/aprun /opt/cray/pals/1.6/bin/mpirun
+    ln -s /opt/cray/pals/1.6/bin/mpiexec /opt/cray/pals/1.6/bin/aprun
+    ln -s /opt/cray/pals/1.6/bin/mpiexec /opt/cray/pals/1.6/bin/mpirun
+    echo "/opt/cray/pals/1.6/lib" >/etc/ld.so.conf.d/cray-pals.conf
+    chmod 644 /etc/ld.so.conf.d/cray-pals.conf
+
+    # Rebuild the cache for ld.so as we have added several conf files in /etc/ld.so.conf.d.
+    /sbin/ldconfig
+
+    #
+    # Installing some packages on LUMI that are not yet in the container but that we build upon.
+    #
+
+    # Refresh caches
+    zypper ref
+
+    # Install the packages
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libopenssl-1_1-devel
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libcurl-devel
+
+    #
+    # Adding mount points so that future builds can even happen with advised mounts present
+    #
+
+    # Slurm mount point is needed as /etc/slurm has to be mounted if %post is used
+    mkdir -p /etc/slurm
+
+    # Mount points for the regular file system mounts are useful in case the user builds
+    # upon this container with a bind module loaded
+
+    mkdir -p /pfs
+    mkdir -p /users
+    mkdir -p /projappl
+    mkdir -p /project
+    mkdir -p /scratch
+    mkdir -p /flash
+    mkdir -p /appl
+
+    # Libfabric mounts
+    mkdir -p /opt/cray/libfabric/1.15.2.0
+    mkdir -p /opt/cray/modulefiles/libfabric
+    touch /usr/lib64/libcxi.so.1
+    # XPMEM mounts
+    mkdir -p /opt/cray/modulefiles/xpmem
+    mkdir -p /opt/cray/xpmem
+    touch /usr/lib64/pkgconfig/cray-xpmem.pc
+    # PALS mount
+    mkdir -p /opt/cray/pals
+
+    # System mounts needed to run with full functionality
+    mkdir -p /var/spool  # Or just /var/spool/slurmd?
+    mkdir -p /run/cxi.   # Or just /var/run/munge?
+
+    # Slurm commands
+    touch /usr/bin/sacct
+    touch /usr/bin/salloc
+    touch /usr/bin/sattach
+    touch /usr/bin/sbatch
+    touch /usr/bin/sbcast
+    touch /usr/bin/scontrol
+    touch /usr/bin/sinfo
+    touch /usr/bin/squeue
+    touch /usr/bin/srun
+    mkdir -p /usr/lib64/slurm
+    mkdir -p /usr/include/slurm
+    ```
+
