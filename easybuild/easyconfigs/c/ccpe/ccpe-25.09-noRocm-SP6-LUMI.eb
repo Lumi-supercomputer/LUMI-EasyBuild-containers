@@ -252,7 +252,7 @@ From: {local_sif}
     touch /usr/bin/squeue
     touch /usr/bin/srun
     mkdir -p /usr/lib64/slurm
-    mkdir -p /var/sppol/slurmd
+    mkdir -p /var/spool/slurmd
     mkdir -p /var/run/munge
     touch /usr/lib64/libmunge.so.2
     touch /usr/lib64/libmunge.so.2.0.0
