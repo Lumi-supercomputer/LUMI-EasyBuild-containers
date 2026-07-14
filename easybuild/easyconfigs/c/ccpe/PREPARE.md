@@ -309,7 +309,10 @@ with minimal bindings, making it easier and less error-prone to use.
 
 -   Rather than using bindings, we copied a number of files from LUMI into the container:
 
-    -   Missing LUA files/directories: `/usr/share/lua/5.3/`, `/usr/bin/lua5.3`, `/usr/lib64/lua/5.3/`.
+    -   Missing LUA files/directories for lua-posix: `/usr/lib64/lua/5.3/posix`, `/usr/share/lua/5.3/posix`.
+
+        Several other ways were tried, but we could not find a repo from which we could download
+        lua-posix or luarocks (to install), and first installing rocks from sources was a bit too much.
 
     -   Munge: Used by Slurm and possibly other packages: `/usr/lib64/libmunge.so.2.0.0`.
         Optionally, we could also copy `/usr/bin/munge`, the corresponding command.
@@ -317,6 +320,11 @@ with minimal bindings, making it easier and less error-prone to use.
         And also link `libmunge.so.2` to this file.
 
     -   `libdrm`: Not entirely sure if we really need this as this is part of the Linux graphics stack.
+
+    -   `liblustre`: Seems to be independent from the Lustre version?
+
+        We need `/usr/lib64/liblustreapi.so.1.0.0` and `/usr/lib64/liblnetconfig.so.4.0.0` and then some
+        symlinks.
 
 -   Things that we copy from the host system to reduce binding complexity, but that will require
     a rebuild after a system update:
@@ -374,7 +382,7 @@ with minimal bindings, making it easier and less error-prone to use.
         zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libcurl-devel
         ```
 
--   The above steps result in the following definition file (`cpe_26.03.01_sles15_sp7_LUMI_26.01.def`):
+-   The above steps result in the following definition file (`cpe-26.03.01-SP7-LUMI-26.01.def`):
 
     ```
     Bootstrap: localimage
@@ -394,9 +402,8 @@ with minimal bindings, making it easier and less error-prone to use.
     #
 
     # Complete the LUA installation
-    /usr/bin/lua5.3
-    /usr/lib64/lua/5.3/
-    /usr/share/lua/5.3/
+    /usr/lib64/lua/5.3/posix
+    /usr/share/lua/5.3/posix
 
     # libmunge
     /usr/lib64/libmunge.so.2.0.0
@@ -405,6 +412,10 @@ with minimal bindings, making it easier and less error-prone to use.
     /usr/lib64/libdrm.so.2.4.0
     /usr/lib64/libdrm_amdgpu.so.1.0.0
     /usr/share/libdrm
+
+    # liblustre
+    /usr/lib64/liblustreapi.so.1.0.0
+    /usr/lib64/liblnetconfig.so.4.0.0
 
     #
     # Phase 2 - Software that depends on other software outside the container
@@ -466,6 +477,11 @@ with minimal bindings, making it easier and less error-prone to use.
     ln -s /usr/lib64/libdrm.so.2     libdrm.so.2
     ln -s /usr/lib64/libdrm_amdgpu.so.1.0.0 /usr/lib64/libdrm_amdgpu.so.1
     ln -s /usr/lib64/libdrm_amdgpu.so.1     libdrm_amdgpu.so.1
+
+    # Finish liblustre
+    ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1
+    ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so
+    ln -s /usr/lib64/liblnetconfig.so.4.0.0 /usr/lib64/liblnetconfig.so.4
 
     #
     # Phase 2 - Software that depends on other software outside the container
