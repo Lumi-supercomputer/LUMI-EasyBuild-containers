@@ -870,10 +870,7 @@ Other elements in the build:
 
 -   We made a deliberate choice to not hard-code the bindings in the `ccpe-*`
     scripts in case a user would want to add to the environment `SINGULARITY_BIND` variable,
-    and also deliberately did not hard-code the path to the container file
-    in those scripts as in this module, a user can safely delete the container
-    from the installation directory and use the copy in `/appl/local/containers/easybuild-sif-images` 
-    instead if they built the container starting from our images and in `partition/container`.
+    and also did not hard-code the path to the container file.
 
     The `ccpe-*` wrapper scripts are defined in the EasyConfig itself (multiline strings)
     and brought on the system in `postinstallcmds` via a trick with bash HERE documents.
@@ -882,3 +879,31 @@ Other elements in the build:
     for different versions of the programming environment. We've tried to catch everything
     which depends on the version of the PE in variables in the EasyConfig, defined 
     just above the sanity check commands (currently only 1).
+
+
+### 25.09 container
+
+-   This container was never properly tested as we got the programming environment on the system
+    just a few weeks after we got access to the container.
+
+-   The idea here was to not try to install ROCm in the container as the installation did not work
+    properly but instead create a ROCm 6.4 EasyBuild module and use that one instead. We ended up
+    doing the same when the 25.09 stack was on the system, as the stack is really made for use 
+    with ROCm 6.4 rather than the 6.3 version we had on the system.
+
+
+### 26.03 container, meant for ROCm(tm) 7.0
+
+-   In a first version we did not install ROCm in the container but instead put it in a separate
+    module with EasyBuild.
+
+-   A lot more of the packages were already installed in the base container that we fed into EasyBuild
+    so that that container can also more easily be used independently from the EasyBuild `ccpe` module.
+
+    This very much simplifies the container definition that EasyBuild runs to prepare the final container
+    and also reduces the amount of bind mounts that one needs to make. The downside is that the container
+    is more likely to have to be regenerated after a system update as some components may no longer be
+    compatible with their matching kernel module or driver.
+
+-   The way of working with the container is otherwise pretty much the same as for the 24.11 and 25.03
+    containers.
