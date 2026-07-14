@@ -326,6 +326,15 @@ with minimal bindings, making it easier and less error-prone to use.
         We need `/usr/lib64/liblustreapi.so.1.0.0` and `/usr/lib64/liblnetconfig.so.4.0.0` and then some
         symlinks.
 
+    -   DSMML: This may not be needed anymore, but in that case we would need to change the configuration
+        of the programming environment and not simply take that configuration from LUMI.
+
+        -   Copy the `/usr/lib64/liblustreapi.so.1.0.0` directory and the 
+            `/opt/cray/pe/lmod/modulefiles/core/cray-dsmml/0.3.1.lua` file.
+
+        -   Create the link for the default version and also create links for shared library generic
+            versions rather than copies of the file.
+
 -   Things that we copy from the host system to reduce binding complexity, but that will require
     a rebuild after a system update:
 
@@ -417,6 +426,10 @@ with minimal bindings, making it easier and less error-prone to use.
     /usr/lib64/liblustreapi.so.1.0.0
     /usr/lib64/liblnetconfig.so.4.0.0
 
+    # dsmml
+    /opt/cray/pe/dsmml/0.3.1
+    /opt/cray/pe/lmod/modulefiles/core/cray-dsmml/0.3.1.lua
+
     #
     # Phase 2 - Software that depends on other software outside the container
     #
@@ -427,8 +440,10 @@ with minimal bindings, making it easier and less error-prone to use.
     /opt/cray/modulefiles/libfabric
 
     # XPMEM
-    /opt/cray/modulefiles/xpmem/2.11.5-1.3_g73ade43320bc # module --loc --redirect show xpmem
-    /usr/lib64/pkgconfig/cray-xpmem.pc # Location from pkg-config --variable=pcfiledir cray-xpmem
+    # module --loc --redirect show xpmem
+    /opt/cray/modulefiles/xpmem/2.11.5-1.3_g73ade43320bc
+    # Location from pkg-config --variable=pcfiledir cray-xpmem
+    /usr/lib64/pkgconfig/cray-xpmem.pc
     /usr/lib64/libxpmem.a
     /usr/lib64/libxpmem.so.0.0.0
 
@@ -470,38 +485,63 @@ with minimal bindings, making it easier and less error-prone to use.
     #
 
     # Finish libmunge
-    ln -s /usr/lib64/libmunge.so.2.0.0 /usr/lib64/libmunge.so.2
+    cd /usr/lib64
+    ln -s libmunge.so.2.0.0 libmunge.so.2
+    cd -
 
     # Finish libdrm
-    ln -s /usr/lib64/libdrm.so.2.4.0 /usr/lib64/libdrm.so.2
-    ln -s /usr/lib64/libdrm.so.2     libdrm.so.2
-    ln -s /usr/lib64/libdrm_amdgpu.so.1.0.0 /usr/lib64/libdrm_amdgpu.so.1
-    ln -s /usr/lib64/libdrm_amdgpu.so.1     libdrm_amdgpu.so.1
+    cd /usr/lib64
+    ln -s libdrm.so.2.4.0 libdrm.so.2
+    ln -s libdrm.so.2     libdrm.so
+    ln -s libdrm_amdgpu.so.1.0.0 libdrm_amdgpu.so.1
+    ln -s libdrm_amdgpu.so.1     libdrm_amdgpu.so
+    cd -
 
     # Finish liblustre
-    ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1
-    ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so
-    ln -s /usr/lib64/liblnetconfig.so.4.0.0 /usr/lib64/liblnetconfig.so.4
+    cd /usr/lib64
+    ln -s liblustreapi.so.1.0.0 liblustreapi.so.1
+    ln -s liblustreapi.so.1.0.0 liblustreapi.so
+    ln -s liblnetconfig.so.4.0.0 liblnetconfig.so.4
+    cd -
+
+    # Finish dsmml
+    cd /opt/cray/pe/dsmml
+    ln -s 0.3.1 default
+    cd -
+    cd  /opt/cray/pe/dsmml/0.3.1/dsmml/lib
+    rm -f libdsmml.so.0 libdsmml.so
+    ln -s libdsmml.so.0.0.0 libdsmml.so.0
+    ln -s libdsmml.so.0.0.0 libdsmml.so
+    cd -
 
     #
     # Phase 2 - Software that depends on other software outside the container
     #
 
     # Finish XPMEM
+    cd /usr/lib64
+    ln -s libxpmem.so.0.0.0 libxpmem.so
+    ln -s libxpmem.so.0.0.0 libxpmem.so.0
+    cd -
     # Make sure the libraries are in the default search path
-    ln -s /usr/lib64/libxpmem.so.0.0.0 /usr/lib64/libxpmem.so
-    ln -s /usr/lib64/libxpmem.so.0.0.0 /usr/lib64/libxpmem.so.0
     echo "/opt/cray/xpmem/default/lib64" >/etc/ld.so.conf.d/cray-xpmem.conf
     chmod 644 /etc/ld.so.conf.d/cray-xpmem.conf
 
     # Finish PALS
-    ln -s /opt/cray/pals/1.6 /opt/cray/pals/default
-    /bin/rm -f /opt/cray/pals/1.6/lib/libpals.so /opt/cray/pals/1.6/lib/libpals.so.0
-    ln -s /opt/cray/pals/1.6/liblibpals.so.0.0.0 /opt/cray/pals/1.6/lib/libpals.so.0 
-    ln -s /opt/cray/pals/1.6/liblibpals.so.0.0.0 /opt/cray/pals/1.6/lib/libpals.so
-    /bin/rm -f /opt/cray/pals/1.6/bin/aprun /opt/cray/pals/1.6/bin/mpirun
-    ln -s /opt/cray/pals/1.6/bin/mpiexec /opt/cray/pals/1.6/bin/aprun
-    ln -s /opt/cray/pals/1.6/bin/mpiexec /opt/cray/pals/1.6/bin/mpirun
+    cd /opt/cray/pals
+    ln -s 1.6 default
+    cd -
+    cd /opt/cray/pals/1.6/lib
+    /bin/rm -f libpals.so libpals.so.0
+    ln -s liblibpals.so.0.0.0 libpals.so.0 
+    ln -s liblibpals.so.0.0.0 libpals.so
+    cd -
+    cd /opt/cray/pals/1.6/bin
+    /bin/rm -f aprun mpirun
+    ln -s mpiexec aprun
+    ln -s mpiexec mpirun
+    cd -
+    # Make sure the libraries are in the default search path
     echo "/opt/cray/pals/1.6/lib" >/etc/ld.so.conf.d/cray-pals.conf
     chmod 644 /etc/ld.so.conf.d/cray-pals.conf
 
@@ -535,22 +575,14 @@ with minimal bindings, making it easier and less error-prone to use.
     mkdir -p /project
     mkdir -p /scratch
     mkdir -p /flash
-    mkdir -p /appl
-
-    # Libfabric mounts
-    mkdir -p /opt/cray/libfabric/1.15.2.0
-    mkdir -p /opt/cray/modulefiles/libfabric
-    touch /usr/lib64/libcxi.so.1
-    # XPMEM mounts
-    mkdir -p /opt/cray/modulefiles/xpmem
-    mkdir -p /opt/cray/xpmem
-    touch /usr/lib64/pkgconfig/cray-xpmem.pc
-    # PALS mount
-    mkdir -p /opt/cray/pals
+    # To mount points for /appl subdirs to be able to mount an alternative software stack.
+    mkdir -p /appl/local
+    mkdir -p /appl/lumi
 
     # System mounts needed to run with full functionality
-    mkdir -p /var/spool  # Or just /var/spool/slurmd?
-    mkdir -p /run/cxi.   # Or just /var/run/munge?
+    mkdir -p /var/spool       # Or just /var/spool/slurmd?
+    mkdir -p /var/run/munbe
+    mkdir -p /run/cxi
 
     # Slurm commands
     touch /usr/bin/sacct

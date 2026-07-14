@@ -1,7 +1,7 @@
 # User instructions for the HPE CPE containers.
 
 !!! Warning "Not working at the moment"
-    The container EasyConfigs are not fully functional as several modifications
+    The container EasyConfigs prior to version 26.03 are not fully functional as several modifications
     are needed after the January 2026 update. As the 25.03 and 25.09 programming
     environments are now on the system, repair does not have a high priority.
 
@@ -108,25 +108,25 @@ as your home directory will quickly fill up if you install in the default
 location. To install the container, use
 
 ```
-module load LUMI/24.03 partition/container EasyBuild-user
+module load LUMI/25.03 partition/container EasyBuild-user
 eb <name_of_easyconfig>
 ```
 
 e.g., 
 
 ```bash
-module load LUMI/24.03 partition/container
-eb ccpe-25.03-B-rocm-6.3-SP5-LUMI.eb
+module load LUMI/25.03 partition/container
+eb ccpe-26.03-noRocm-SP7-LUMI.eb
 ```
 
 Any more recent version of the LUMI stack on the system will also work for the installation.
 
 After that, the module installed by the EasyConfig (in the example,
-`ccpe/25.03-B-rocm-6.3-SP5-LUMI`) will be available in all versions of the `LUMI` stack on
+`ccpe/26.03-noRocm-SP7-LUMI`) will be available in all versions of the `LUMI` stack on
 the system and in `CrayEnv`. So, e.g.,
 
 ```
-module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI
+module load CrayEnv ccpe/26.03-noRocm-SP7-LUMI
 ```
 
 is enough to gain access to the container and all its tools explained on this page.
