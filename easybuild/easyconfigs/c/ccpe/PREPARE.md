@@ -558,6 +558,7 @@ with minimal bindings, making it easier and less error-prone to use.
     # Install the packages
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libopenssl-1_1-devel
     zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libcurl-devel
+    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage zip unzip
 
     #
     # Adding mount points so that future builds can even happen with advised mounts present
