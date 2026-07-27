@@ -160,7 +160,7 @@ From: {local_sif}
     # zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libnghttp2-14
     # zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libnl3-200
     
-     # Tweak Lmod to use a different cache directory
+    # Tweak Lmod to use a different cache directory
     sed -e 's|.cache/lmod|.cache/lmod/ccpe-{local_ccpe_version}|' -i /opt/cray/pe/lmod/lmod/libexec/myGlobals.lua
     
     # Create the symbolic links for the Lustre libraries
