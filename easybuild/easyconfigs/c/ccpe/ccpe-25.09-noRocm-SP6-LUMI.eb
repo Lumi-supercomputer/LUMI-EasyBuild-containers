@@ -28,7 +28,7 @@ local_c_rocm_major_minor = '.'.join( local_c_rocm_version.split('.')[:2] )
 
 name =          'ccpe'
 version =       '25.09'
-versionsuffix = f'-noRocm-{local_c_rocm_major_minor}-SP6-LUMI'
+versionsuffix = f'-noRocm-SP6-LUMI'
 
 local_sif = f'cpe-{version}-SP6.sif'
 
