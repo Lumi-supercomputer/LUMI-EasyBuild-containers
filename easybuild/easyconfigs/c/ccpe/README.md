@@ -220,6 +220,11 @@ Our EasyBuild modules do provide a `/etc/bash.bashrc.local` file that does the s
 initialisations as `eval $INITCCPE`. So calling `source /etc/bash.bashrc` is also an option 
 to initialise Lmod in the container.
 
+We do use the `BASH_ENV` environment variable though to source 
+`/opt/cray/pe/lmod/lmod/init/bash` to ensure that Lmod is initialised whenever a bash 
+shell is started. (If that is not yet done in the container we start from in the first
+place.)
+
 
 ### Knowing we are in the container
 
@@ -290,7 +295,7 @@ section in the definition file to copy those two files from LUMI:
 ```
 Bootstrap: localimage
 
-From: cpe-24.11.sif
+From: cpe-26.03.sif
 
 %files
 
@@ -395,7 +400,7 @@ Possible code to accomplish this is:
  # 
  if [ -z "${SWITCHTOCCPE}" ]
  then
-     module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
+     module load CrayEnv ccpe/26.03-noRocm-SP7-LUMI || exit
  fi
  
  if [ ! -d "/.singularity.d" ]
@@ -503,7 +508,7 @@ So basically, all that a user needs is
  # 
  if [ -z "${SWITCHTOCCPE}" ]
  then
-     module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
+     module load CrayEnv ccpe/26.03-noRocm-SP7-LUMI || exit
  fi
  
  #
@@ -597,11 +602,12 @@ srun singularity exec $SIFCCPE hybrid_check
 ```
 
 
-!!! Remark "The `salloc` command does not yet work in a container"
+!!! Remark "The `salloc` command does not work in a container in the same way as it does outside the container"
 
     Currently, we haven't found a way yet to get the `salloc` command to work
-    properly when started in the container. The workaround is to use `salloc`
-    outside the container, then go in the container.
+    as one would expect when started in the container. The workaround is to use `salloc`
+    outside the container, then go in the container. Alternatively, add `bash` at the end
+    of the `salloc` command to tell it that it has to start the bash shell.
 
 
 ## EasyBuild
@@ -881,7 +887,7 @@ Other elements in the build:
     just above the sanity check commands (currently only 1).
 
 
-### 25.09 container
+### 25.09 container, meant for ROCm(tm) 6.4
 
 -   This container was never properly tested as we got the programming environment on the system
     just a few weeks after we got access to the container.

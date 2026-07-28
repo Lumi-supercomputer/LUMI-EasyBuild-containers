@@ -19,7 +19,6 @@ easyblock = 'MakeCp'
 local_cpe_fullversion = '26.03.01'
 
 local_PRoot_version =             '5.4.0'         #  https://github.com/proot-me/proot/releases
-#local_rocm_version =              '6.0.3'
 
 local_c_rocm_version     = '7.0.3'
 local_c_rocm_major_minor = '.'.join( local_c_rocm_version.split('.')[:2] )
@@ -128,14 +127,6 @@ From: {local_sif}
     # Tweak Lmod to use a different cache directory
     sed -e 's|.cache/lmod|.cache/lmod/ccpe-{local_ccpe_version}|' -i /opt/cray/pe/lmod/lmod/libexec/myGlobals.lua
     
-    # Create the symbolic links for the Lustre libraries
-    #ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1   # Turns out this is done automatically????
-    ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so
-    #ln -s /usr/lib64/liblnetconfig.so.4.0.0 /usr/lib64/liblnetconfig.so.4 # Turns out this is done automatically????
-    
-    # Rebuild the cache for ld.so as we have added several conf files in /etc/ld.so.conf.d.
-    /sbin/ldconfig
-
 """.replace( '$', '\\$' )
 
 

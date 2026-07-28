@@ -1,6 +1,6 @@
 # User instructions for the HPE CPE containers.
 
-!!! Warning "Not working at the moment"
+!!! Warning "25.09 not working at the moment"
     The container EasyConfigs prior to version 26.03 are not fully functional as several modifications
     are needed after the January 2026 update. As the 25.03 and 25.09 programming
     environments are now on the system, repair does not have a high priority.
@@ -45,7 +45,7 @@
 
 The CPE containers are made available in `/appl/local/containers/easybuild-sif-images`.
 
-Note the licensing conditions though. These containers should only be used on LUMI.
+Note the licensing conditions though. **These containers should only be used on LUMI.**
 
 
 ## How to enable the containers?
@@ -186,11 +186,12 @@ a clean inherited environment.
 
 ??? Example "See how broken the job environment can be..."
 
-    *This example is developed running a container for the 24.11 programming environment
-    on LUMI in March 2025 with the 24.03 programming environment as the default.*
+    *This example is developed running a container for the 26.03 programming environment
+    on LUMI in July 2026 with the 245.03 programming environment as the default.*
 
-    The 24.03 environment comes with `cce/17.0.1` while the 24.11 environment comes with
-    `cce/18.0.1`. When loading the module, it sets the environment variable 'CRAY_CC_VERSION'
+    The 25.03 environment on the system comes with `cce/19.0.0` while the 
+    26.03 environment in the container comes with `cce/21.0.0`.
+    When loading the module, it sets the environment variable 'CRAY_CC_VERSION'
     to the version of the CCE compiler.
 
     Start up the container:
@@ -205,10 +206,10 @@ a clean inherited environment.
     module --version
     ```
 
-    which returns version 8.7.37:
+    which returns version 8.7.60:
 
     ```
-    Modules based on Lua: Version 8.7.37  [branch: release/cpe-24.11] 2024-09-24 16:53 +00:00
+    Modules based on Lua: Version 8.7.60 [branch: release/cpe-26.03] 2025-12-04 14:39 +00:00
         by Robert McLay mclay@tacc.utexas.edu    
     ```
     
@@ -222,17 +223,18 @@ a clean inherited environment.
 
     ```
     Currently Loaded Modules:
-    1) craype-x86-rome                                 6) cce/18.0.1           11) PrgEnv-cray/8.6.0
-    2) libfabric/1.15.2.0                              7) craype/2.7.33        12) ModuleLabel/label (S)
-    3) craype-network-ofi                              8) cray-dsmml/0.3.0     13) lumi-tools/24.05  (S)
-    4) perftools-base/24.11.0                          9) cray-mpich/8.1.31    14) init-lumi/0.2     (S)
-    5) xpmem/2.9.6-1.1_20240510205610__g087dc11fc19d  10) cray-libsci/24.11.0
+      1) craype-x86-rome                  6) cce/21.0.0           11) PrgEnv-cray/8.7.0
+      2) libfabric/1.22.0                 7) craype/2.7.36        12) ModuleLabel/label (S)
+      3) craype-network-ofi               8) cray-dsmml/0.3.1     13) init-lumi/0.2     (S)
+      4) perftools-base/26.03.0           9) cray-mpich/9.1.0
+      5) xpmem/2.11.5-1.3_g73ade43320bc  10) cray-libsci/26.03.0
 
-    Where:
-    S:  Module is Sticky, requires --force to unload or purge
+      Where:
+       S:  Module is Sticky, requires --force to unload or purge
     ```
 
-    so we start with the Cray programming environment loaded.
+    so we start with the Cray programming environment loaded. (And note there is no `lumi-tools` here
+    as that module contains several commands that cannot work in the container.)
 
     Now use an interactive `srun` session to start a session on the compute node.
 
@@ -246,10 +248,10 @@ a clean inherited environment.
     module --version
     ```
 
-    now returns version 8.7.32: 
+    now returns version 8.7.55: 
     
     ```
-    Modules based on Lua: Version 8.7.32  2023-08-28 12:42 -05:00
+    Modules based on Lua: Version 8.7.55 [branch: release/shasta] 2025-01-18 03:40 +00:00
         by Robert McLay mclay@tacc.utexas.edu
     ```
     
@@ -265,14 +267,14 @@ a clean inherited environment.
 
     ```
     Currently Loaded Modules:
-    6) craype-x86-rome                                 6) cce/18.0.1           11) PrgEnv-cray/8.6.0
-    7) libfabric/1.15.2.0                              7) craype/2.7.33        12) ModuleLabel/label (S)
-    8) craype-network-ofi                              8) cray-dsmml/0.3.0     13) lumi-tools/24.05  (S)
-    9) perftools-base/24.11.0                          9) cray-mpich/8.1.31    14) init-lumi/0.2     (S)
-    10) xpmem/2.9.6-1.1_20240510205610__g087dc11fc19d  10) cray-libsci/24.11.0
+      6) craype-x86-rome                  6) cce/21.0.0           11) PrgEnv-cray/8.7.0
+      7) libfabric/1.22.0                 7) craype/2.7.36        12) ModuleLabel/label (S)
+      8) craype-network-ofi               8) cray-dsmml/0.3.1     13) init-lumi/0.2     (S)
+      9) perftools-base/26.03.0           9) cray-mpich/9.1.0
+      10) xpmem/2.11.5-1.3_g73ade43320bc  10) cray-libsci/26.03.0
 
-    Where:
-    S:  Module is Sticky, requires --force to unload or purge
+      Where:
+       S:  Module is Sticky, requires --force to unload or purge
     ```
 
     so the modules we were using in the container.
@@ -283,7 +285,7 @@ a clean inherited environment.
     echo $CRAY_CC_VERSION
     ```
 
-    returns `18.0.1`.
+    returns `21.0.0`.
 
     Now do a
 
@@ -295,13 +297,9 @@ a clean inherited environment.
 
     ```
     The following modules were not unloaded:
-    (Use "module --force purge" to unload all):
+      (Use "module --force purge" to unload all):
 
-    1) ModuleLabel/label   2) lumi-tools/24.05   3) init-lumi/0.2
-
-    The following sticky modules could not be reloaded:
-
-    1) lumi-tools
+      11) ModuleLabel/label   2) lumi-tools/26.06   3) init-lumi/0.2
     ```
 
     and 
@@ -314,7 +312,7 @@ a clean inherited environment.
 
     ```
     Currently Loaded Modules:
-    1) ModuleLabel/label (S)   2) lumi-tools/24.05 (S)   3) init-lumi/0.2 (S)
+      12) ModuleLabel/label (S)   2) lumi-tools/26.06 (S)   3) init-lumi/0.2 (S)
 
     Where:
     S:  Module is Sticky, requires --force to unload or purge
@@ -326,7 +324,7 @@ a clean inherited environment.
     echo $CRAY_CC_VERSION
     ```
 
-    still return `18.0.1`, so even though it appears that the `cce/18.0.1` module has been unloaded,
+    still return `21.0.0`, so even though it appears that the `cce/21.0.0` module has been unloaded,
     not all (if any) environment variables set by the module, have been correctly unset. 
 
     We can now load the `cce` module again:
@@ -345,7 +343,7 @@ a clean inherited environment.
 
     ```
     Currently Loaded Modules Matching: cce
-    1) cce/17.0.1
+      13) cce/19.0.0
     ```
 
     so it appears we have the `cce` module from the system. This went well in this case. And in fact,
@@ -358,12 +356,12 @@ a clean inherited environment.
 
     ```
     Currently Loaded Modules:
-    1) ModuleLabel/label (S)   4) craype/2.7.31.11     7) craype-network-ofi   10) PrgEnv-cray/8.5.0
-    2) lumi-tools/24.05  (S)   5) cray-dsmml/0.3.0     8) cray-mpich/8.1.29    11) cce/17.0.1
-    3) init-lumi/0.2     (S)   6) libfabric/1.15.2.0   9) cray-libsci/24.03.0
+      14) ModuleLabel/label (S)   4) craype/2.7.34      7) craype-network-ofi   10) PrgEnv-cray/8.6.0
+      15) lumi-tools/26.06  (S)   5) cray-dsmml/0.3.1   8) cray-mpich/8.1.32    11) cce/19.0.0
+      16) init-lumi/0.2     (S)   6) libfabric/1.22.0   9) cray-libsci/25.03.0
 
-    Where:
-    S:  Module is Sticky, requires --force to unload or purge
+      Where:
+       S:  Module is Sticky, requires --force to unload or purge
     ```
 
     suggests that some other modules, like `cray-mpich` and `cray-libsci` have also been reloaded.
@@ -372,7 +370,7 @@ a clean inherited environment.
     echo $CRAY_CC_VERSION
     ```
 
-    returns `17.0.1` as expected, and after
+    returns `19.0.0` as expected, and after
 
     ```bash
     module purge
@@ -409,6 +407,7 @@ from a correctly initialised container with passing of the full environment:
  # those in `module list` and also fails to change variables that should be changed.
  #
  #SBATCH -J example-jobscript
+ #SBATCH -A <my_account>
  #SBATCH -p standard
  #SBATCH -N 2
  #SBATCH -n 32
@@ -430,7 +429,7 @@ from a correctly initialised container with passing of the full environment:
  #
  if [ -z "${SWITCHTOCCPE}" ]
  then
-     module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
+     module load CrayEnv ccpe/26.03-noRocm-SP7-LUMI || exit
  fi
  
  #
@@ -449,8 +448,8 @@ from a correctly initialised container with passing of the full environment:
  # Always reconstruct the environment and don't rely on something inherited from
  # the calling shell as this will be wrong if the job script is not launched from
  # within the container.
- module load LUMI/25.03 partition/C
- module load lumi-CPEtools/1.2-cpeCray-25.03-hpcat-0.9
+ module load LUMI/26.03 partition/C
+ module load lumi-CPEtools/1.2-cpeCray-26.03-hpcat-0.9
 
  # We also need a little trick with srun.
  # Template: ccpe-srun <srun arguments> singularity exec $SIFCCPE <command>
@@ -484,7 +483,7 @@ What this job script does:
             ``` bash
             if [ -z "${SWITCHTOCCPE}" ]
             then
-                module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
+                module load CrayEnv ccpe/26.03-noRocm-SP7-LUMI || exit
             fi
             ```
 
@@ -505,7 +504,7 @@ What this job script does:
             ``` bash
             if [ -z "${SWITCHTOCCPE}" ]
             then
-                module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
+                module load CrayEnv ccpe/26.03-noRocm-SP7-LUMI || exit
             fi
             ```
 
@@ -519,7 +518,7 @@ What this job script does:
             ``` bash
             if [ -z "${SWITCHTOCCPE}" ]
             then
-                module load CrayEnv ccpe/25.03-B-rocm-6.3-SP5-LUMI || exit
+                module load CrayEnv ccpe/26.03-noRocm-SP7-LUMI || exit
             fi
             ```
 
@@ -545,7 +544,7 @@ What this job script does:
     }
     ```
 
-    so instead of using `cpe-srun` in the above example, one could also have used
+    so instead of using `ccpe-srun` in the above example, one could also have used
 
     ``` bash
     SINGULARITYENV_PATH=$PATH SINGULARITYENV_LD_LIBRARY_PATH=$LD_LIBRARY_PATH srun \
@@ -568,10 +567,10 @@ be important to understand this to always use the template correctly), check the
 
 ## Known restrictions    
 
--   `PrgEnv-aocc` is not provided by the container. The ROCm version is taken from the
-    system and may not be the optimal one for the version of the PE.
+-   `PrgEnv-aocc` is not provided by the container.
 
--   `salloc` does not work in the container.
+-   `salloc` does not work in the container as you would expect. It cannot find a shell.
 
     Workaround: Use `salloc` outside the container, then go into the container with 
-    `ccpe-run`.
+    `ccpe-run`. Or use `salloc <my_arguments> bash`, i.e., use the name of the shell
+    as the last argument.

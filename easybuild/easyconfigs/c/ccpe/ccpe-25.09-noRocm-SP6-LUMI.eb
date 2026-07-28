@@ -6,22 +6,17 @@
 #DOC container are also made through this EasyConfig, so you may use it as a template to
 #DOC adapt the CPE containers to your needs.
 #DOC
-#DOC This C-rocm version also integrates ROCm in the container and installs it using the 
-#DOC SUSE zypper install tool, guaranteeing that all dependencies are also present in
-#DOC the right version. As such, it is the most robust variant of the containers with 
-#DOC ROCm. However, installing ROCm with the unprivileged build process is extremely slow, 
-#DOC so expect long build times (over one and a half hour on a compute node),
-#DOC rendering this approach rather inefficient. The assembly of the container may also
-#DOC run out-of-memory on the login nodes as the memory available to a single user is
-#DOC restricted to 96GB.
+#DOC This version does not contain any ROCm module. Instead, one is provided via the 
+#DOC software stacks enabled in the container (CrayEnv and LUMI/26.03 partition/G).
+#DOC It is meant to be used in the LUMI environment as it was after the january 2026
+#DOC update and may not work anymore after a future system update.
 #DOC
-#DOC This container can be installed in `partition/container` via LUMI/24.03 or more recent
+#DOC This container can be installed in `partition/container` via LUMI/25.03 or more recent
 #DOC LUMI stacks, after which the module will be available in CrayEnv and all versions of the
 #DOC LUMI stack.
 easyblock = 'MakeCp'
 
 local_PRoot_version =             '5.4.0'         #  https://github.com/proot-me/proot/releases
-local_rocm_version =              '6.0.3'
 
 local_c_rocm_version     = '6.4.4'
 local_c_rocm_major_minor = '.'.join( local_c_rocm_version.split('.')[:2] )
@@ -146,9 +141,6 @@ From: {local_sif}
     /etc/group
     /etc/passwd
     
-    /usr/lib64/pkgconfig/rocm-5.7.pc
-    /usr/lib64/pkgconfig/rocm-{local_rocm_version}.pc /usr/lib64/pkgconfig/rocm-{local_c_rocm_version}.pc
-     
     # 3 files/directories that we will remove again and replace with mount points, but that we need for
     # a successful build (as otherwise we cannot mount on them when needed).
     /opt/cray/xpmem
