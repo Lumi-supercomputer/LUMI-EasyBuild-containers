@@ -6,32 +6,34 @@
 #DOC container are also made through this EasyConfig, so you may use it as a template to
 #DOC adapt the CPE containers to your needs.
 #DOC
-#DOC This version does not contain any ROCm module. Instead, one is provided via the 
-#DOC software stacks enabled in the container (CrayEnv and LUMI/26.03 partition/G).
-#DOC It is meant to be used in the LUMI environment as it was after the january 2026
-#DOC update and may not work anymore after a future system update.
+#DOC This B-rocm version bind mounts the actual ROCm installation from a SquashFS file
+#DOC provided on LUMI which should give better compile performance than when simply
+#DOC mounting a directory from one of the LUMI parallel file systems with the ROCm
+#DOC installation. Some libraries  on the OS side may not be the best version, so in 
+#DOC case of trouble, switch to the C-rocm version.
 #DOC
-#DOC This container can be installed in `partition/container` via LUMI/25.03 or more recent
+#DOC This container can be installed in `partition/container` via LUMI/24.03 or more recent
 #DOC LUMI stacks, after which the module will be available in CrayEnv and all versions of the
 #DOC LUMI stack.
 easyblock = 'MakeCp'
 
 local_PRoot_version =             '5.4.0'         #  https://github.com/proot-me/proot/releases
+local_rocm_version =              '6.0.3'
 
-local_c_rocm_version     = '6.4.4'
+local_c_rocm_version     = '6.2.4'
 local_c_rocm_major_minor = '.'.join( local_c_rocm_version.split('.')[:2] )
 
 name =          'ccpe'
-version =       '25.09'
-versionsuffix = f'-noRocm-SP6-LUMI'
+version =       '24.11'
+versionsuffix = f'-B-rocm-{local_c_rocm_major_minor}-LUMI'
 
-local_sif = f'cpe-{version}-SP6.sif'
+local_sif = f'cpe-{version}.sif'
 
 local_ccpe_version =     f'{version}{versionsuffix} '
 local_appl_lumi =        f'/pfs/lustref1/appl/lumi/ccpe/appl/{version}-{local_c_rocm_major_minor}'
 #local_appl_lumi =        f'/appl/lumi'
 
-homepage = 'https://cpe.ext.hpe.com/docs/25.09/index.html'
+homepage = 'https://cpe.ext.hpe.com/docs/24.11/index.html'
 
 whatis = [
     'Description: Containerised HPE-Cray Programming Environment'
@@ -124,15 +126,10 @@ From: {local_sif}
     %(installdir)s/config/bash.bashrc.local /etc
     %(installdir)s/config/runscript         /.singularity.d
     
-    /opt/cray/pals/1.3.2                              /opt/cray/pals/1.3.2
-    /opt/cray/pals/lmod/modulefiles/core/cray-pals    /opt/cray/pe/lmod/modulefiles/core/cray-pals
-    /opt/cray/pals/lmod/modulefiles/core/cray-libpals /opt/cray/pe/lmod/modulefiles/core/cray-libpals
-    /opt/cray/pals/modulefiles/cray-pals              /opt/cray/pe/modulefiles/cray-pals
-    /opt/cray/pals/modulefiles/cray-libpals           /opt/cray/pe/modulefiles/cray-libpals
-    
-    # Get libjansson from the system as the version we download with OpenSUSE is an older version
-    # that gives issues with cray-pals
-    /usr/lib64/libjansson.so.4.14.0
+    /opt/cray/pe/lmod/modulefiles/core/rocm/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/core/rocm/{local_c_rocm_version}.lua
+    /opt/cray/pe/lmod/modulefiles/core/amd/{local_rocm_version}.lua  /opt/cray/pe/lmod/modulefiles/core/amd/{local_c_rocm_version}.lua
+
+    /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_rocm_version}.lua /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c_rocm_version}.lua 
 
     # Get Lustre libraries from the system
     /usr/lib64/liblustreapi.so.1.0.0
@@ -141,114 +138,53 @@ From: {local_sif}
     /etc/group
     /etc/passwd
     
-    # 3 files/directories that we will remove again and replace with mount points, but that we need for
-    # a successful build (as otherwise we cannot mount on them when needed).
-    /opt/cray/xpmem
-    /opt/cray/pals
+    /usr/lib64/pkgconfig/rocm-5.7.pc
+    /usr/lib64/pkgconfig/rocm-{local_rocm_version}.pc /usr/lib64/pkgconfig/rocm-{local_c_rocm_version}.pc
+    
     /etc/slurm/slurm.conf
 
 %post
 
     # Install additional packages
-    zypper --non-interactive --no-gpg-checks addrepo https://download.opensuse.org/distribution/leap/15.6/repo/oss/ oss
+    zypper -n --no-gpg-checks addrepo https://download.opensuse.org/distribution/leap/15.5/repo/oss/ oss
     
-    # Refresh caches
-    zypper ref
+    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libopenssl-devel
+    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libcurl-devel
+    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage curl
+    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage unzip
+    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage groff
+    zypper -n --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage glibc-devel-static
     
-    # We need to clean up busybox-gzip as it conflicts with ROCm which wants the regular gzip,
-    # but we cannot do so with zypper as it removes half of the PE as it depends on the package. 
-    # zypper --non-interactive remove busybox-gzip-1.37.0-150500.7.7.2.noarch
-    rpm -e --nodeps busybox-gzip-1.37.0-150500.7.7.2.noarch
-    
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libopenssl-devel
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libcurl-devel
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage curl
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage unzip
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage bzip2
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage gzip
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage glibc-devel-static
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage groff
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage rsync # Needed for ROCm installation...
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage vim
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage which
-
     # Support for Lustre also requires some SUSE packages but they may already be in the container
     # In fact, we outcomment since in the current container they are present.
     # zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libnghttp2-14
     # zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage libnl3-200
     
-    # The container lacks locales except for C and POSIX which causes too many issues, including some
-    # Python packages for EasyBuild that do not even install or crash when running.    
-    zypper --non-interactive --no-gpg-checks --no-refresh install --no-recommends --allow-downgrade --oldpackage glibc-locale
-    
     # Tweak Lmod to use a different cache directory
     sed -e 's|.cache/lmod|.cache/lmod/ccpe-{local_ccpe_version}|' -i /opt/cray/pe/lmod/lmod/libexec/myGlobals.lua
-    
-    # Correct the broken default link for xpmem via /etc/alternatives and make sure
-    # the libraries are in the default search path
-    ln -s /opt/cray/xpmem/2.8.2-1.0_5.1__g84a27a5.shasta /etc/alternatives/cray-xpmem
-    echo "/opt/cray/xpmem/default/lib64" >/etc/ld.so.conf.d/cray-xpmem.conf
-    chmod 644 /etc/ld.so.conf.d/cray-xpmem.conf
-    
-    # Put links for pals and put in the search path for shared libraries
-    echo "/opt/cray/pals/default/lib" >/etc/ld.so.conf.d/cray-pals.conf
-    chmod 644 /etc/ld.so.conf.d/cray-pals.conf
     
     # Create the symbolic links for the Lustre libraries
     #ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so.1   # Turns out this is done automatically????
     ln -s /usr/lib64/liblustreapi.so.1.0.0 /usr/lib64/liblustreapi.so
     #ln -s /usr/lib64/liblnetconfig.so.4.0.0 /usr/lib64/liblnetconfig.so.4 # Turns out this is done automatically????
     
-    # Rebuild the cache for ld.so as we have added several conf files in /etc/ld.so.conf.d.
-    /sbin/ldconfig
+    # Tweak the ROCm and AMD modules
+    sed -e 's|{local_rocm_version}|{local_c_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/core/rocm/{local_c_rocm_version}.lua
+    sed -e 's|{local_rocm_version}|{local_c_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/core/amd/{local_c_rocm_version}.lua
+    
+    sed -e 's|{local_rocm_version}|{local_c_rocm_version}|g' -i /opt/cray/pe/lmod/modulefiles/mix_compilers/amd-mixed/{local_c_rocm_version}.lua 
+    
+    # Tweak the pkgconfig files for ROCm
+    ln -s /usr/lib64/pkgconfig/rocm-5.7.pc /usr/lib64/pkgconfig/rocm.pc
+    sed -e 's|{local_rocm_version}|{local_c_rocm_version}|g' -i /usr/lib64/pkgconfig/rocm-{local_c_rocm_version}.pc
+
+    # Create the /opt/rocm symbolic link
+    mkdir -p /opt/rocm-{local_c_rocm_version}
+    ln -s /opt/rocm-{local_c_rocm_version} /etc/alternatives/rocm
+    ln -s /etc/alternatives/rocm /opt/rocm
     
     # No longer needed, we prefer to bind the system one to always be up-to-date.
     /bin/rm -rf /etc/slurm
-    
-    # No longer needed, we'll bind that one when running to be sure to always have the system version.
-    /bin/rm -rf /opt/cray/xpmem
-
-    # No longer needed, we'll bind that one when running to be sure to always have the system version.
-    /bin/rm -rf /opt/cray/pals
-
-    # Create mount points for future singularity build operations
-    mkdir -p /pfs
-    mkdir -p /users
-    mkdir -p /projappl
-    mkdir -p /project
-    mkdir -p /scratch
-    mkdir -p /flash
-    mkdir -p /appl/local
-    mkdir -p /appl/lumi
-    # Libfabric mounts
-    mkdir -p /opt/cray/libfabric/1.15.2.0
-    mkdir -p /opt/cray/modulefiles/libfabric
-    touch /usr/lib64/libcxi.so.1
-    # XPMEM mounts
-    mkdir -p /opt/cray/modulefiles/xpmem
-    mkdir -p /opt/cray/xpmem
-    touch /usr/lib64/pkgconfig/cray-xpmem.pc
-    # PALS mount
-    mkdir -p /opt/cray/pals
-    # System mounts
-    mkdir -p /var/spool
-    mkdir -p /run/cxi
-    mkdir -p /etc/slurm
-    touch /usr/bin/sacct
-    touch /usr/bin/salloc
-    touch /usr/bin/sattach
-    touch /usr/bin/sbatch
-    touch /usr/bin/sbcast
-    touch /usr/bin/scontrol
-    touch /usr/bin/sinfo
-    touch /usr/bin/squeue
-    touch /usr/bin/srun
-    mkdir -p /usr/lib64/slurm
-    mkdir -p /var/spool/slurmd
-    mkdir -p /var/run/munge
-    touch /usr/lib64/libmunge.so.2
-    touch /usr/lib64/libmunge.so.2.0.0
-    mkdir -p /usr/include/slurm
 
 """.replace( '$', '\\$' )
 
@@ -521,22 +457,24 @@ sanity_check_paths = {
     'dirs':  ['bin', 'config'],
 }
 
-local_expected_cce = '20.0.0'
+local_expected_cce = '18.0.1'
 
 sanity_check_commands = [
+    # Test if rocm was installed in the container. I've seen zypper fail without stopping the container build...
+    'echo "INFO: Checking for /opt/rocm/bin"; ccpe-exec test -d /opt/rocm/bin',
     # Test for one of the last applications we installed through zypper before rocm.
-    #'echo "INFO: Checking for /usr/bin/vim"; ccpe-exec test -f /usr/bin/vim', 
+    'echo "INFO: Checking for /usr/bin/vim"; ccpe-exec test -f /usr/bin/vim', 
     # The next test will check if modules are correctly initialised and if the correct cce
     # module is present.
-    #f'echo "INFO: Testing if cce/{local_expected_cce} is present" ; ccpe-singularity exec "$SIFCCPE" bash -i -c \'module --terse list\' |& grep -q "cce/{local_expected_cce}"',
+    f'echo "INFO: Testing if cce/{local_expected_cce} is present" ; ccpe-singularity exec "$SIFCCPE" bash -i -c \'module --terse list\' |& grep -q "cce/{local_expected_cce}"',
     # Check if libfabric is loaded correctly and if it is the version of the system.
-    #'echo "INFO: Checking if the system libfabric is loaded by default." ; module load libfabric && test $(ccpe-singularity exec "$SIFCCPE" bash -i -c \'module --terse list\' |& grep "libfabric") = $(module --terse list |& grep "libfabric")',  
+    'echo "INFO: Checking if the system libfabric is loaded by default." ; module load libfabric && test $(ccpe-singularity exec "$SIFCCPE" bash -i -c \'module --terse list\' |& grep "libfabric") = $(module --terse list |& grep "libfabric")',  
     # Check if the CXI provider is found.
-    #'echo "INFO: Checking for the CXI provider." ; ccpe-singularity exec "$SIFCCPE" bash -i -c \'fi_info\' | egrep -q "provider:[[:space:]]+cxi"',
+    'echo "INFO: Checking for the CXI provider." ; ccpe-singularity exec "$SIFCCPE" bash -i -c \'fi_info\' | egrep -q "provider:[[:space:]]+cxi"',
     # Test of the Slurm integration
-    #'echo "INFO: Checking Slurm sinfo command." ; ccpe-exec sinfo | grep -q standard-g',
+    'echo "INFO: Checking Slurm sinfo command." ; ccpe-exec sinfo | grep -q standard-g',
     #
-    # Tried testing with ccpe-run or ccpe-singularity run also but for some reason, this does not work in EasyBuild,
+    # Tried testing with ccpe-run or ccpe-singularity run also but for some reason, this does not work in Easybuild,
     # and the runscript gets stuck, possibly trying to use a terminal which is not there. So even though running
     # something with `singularity run` seems to work on the command line, it may not work in batch mode.
 ]
@@ -578,14 +516,11 @@ local_singularity_bind = ','.join( [ # Add bindings here!
     '/appl/local',
     f'{local_appl_lumi}:/appl/lumi',
 
-    # ROCm is included in this container, so the next block is not needed.
-    # Customize these locations per-system
-    # GPU SDK mounts
-    # Customize these locations per-system
-    #'/opt/cray/pe/lmod/modulefiles/core/rocm/6.0.3.lua', # module --loc --redirect show rocm
-    #'/opt/cray/pe/lmod/modulefiles/core/amd/6.0.3.lua',  # module --loc --redirect show amd
-    #'/opt/rocm-6.0.3',                                   # module --redirect show rocm | grep ROCM_PATH | awk -F'"' '{ print $4 }'
-    #'/usr/lib64/pkgconfig/rocm-6.0.3.pc',                # echo "$(module --redirect show rocm | grep PKG_CONFIG_PATH | awk -F'"' '{ print $4 }')/$(module --redirect show rocm | grep PE_PKGCONFIG_LIBS | awk -F'"' '{ print $4 }').pc"
+    # ROCm is mounted from a SquashFS file, module files and pkgconfig files are 
+    # included in the container. 
+    # Lmod may remove the trailing slash, but that doesn't seem to bother the correct
+    # working of this bind.
+    f'/pfs/lustref1/appl/lumi/ccpe/rocm/{local_c_rocm_version}/rocm-{local_c_rocm_version}.squashfs:/opt/rocm-{local_c_rocm_version}:image-src=/',
     # Do we need to bind /dev/kfd and /dev/dri? They seem to be in the container by default.
 
     # System libfabric install: Different from the ccpe-config script as that was for Red Hat
@@ -594,19 +529,6 @@ local_singularity_bind = ','.join( [ # Add bindings here!
     '/opt/cray/libfabric/1.15.2.0',    # module --redirect show libfabric | grep '"PATH"' | awk -F'"' '{ print $4 }' | sed -e 's|/bin||'
     '/opt/cray/modulefiles/libfabric', # module --loc --redirect show libfabric | sed -e 's|\(.*libfabric.*\)/.*|\1|'
     '/usr/lib64/libcxi.so.1',          # ldd $(module --redirect show libfabric | grep '"LD_LIBRARY_PATH"' | awk -F'"' '{ print $4 }')/libfabric.so | grep libcxi | awk '{print $3}'
-
-    # XPMEM binding
-    '/opt/cray/modulefiles/xpmem',        # `module --loc --redirect show xpmem` but just take the directory
-    '/opt/cray/xpmem',                    # echo $(dirname `pkg-config --variable=prefix cray-xpmem`)
-    '/usr/lib64/pkgconfig/cray-xpmem.pc', # echo "$(pkg-config --variable=pcfiledir cray-xpmem)/cray-xpmem.pc"
-
-    # PALS binding
-    #'/opt/cray/pe/lmod/modulefiles/core/cray-pals',               # The modules on the system are wrong
-    '/opt/cray/pals',
-
-    # Do we need PALs on LUMI? Yes, as several libraries link it even though it is probably not used.
-    # echo $(dirname `module --redirect show cray-pals | grep PATH | awk -F'"' '{ print $4 }' | tail -n 1`)
-    # '/usr/lib64/libjansson.so.4', 
     
     # System mounts - List from Alfio webinar
     '/var/spool',
@@ -639,6 +561,8 @@ local_singularity_bind = ','.join( [ # Add bindings here!
 ] )
 
 modluafooter = f"""
+
+-- LmodMessage( "By using this container, you agree to the license https://downloads.hpe.com/pub/softlib2/software1/doc/p1796552785/v113125/eula-en.html ." )
 
 -- Set the bind mounts
 prepend_path( 'SINGULARITY_BIND', '{local_singularity_bind}', ',' )
