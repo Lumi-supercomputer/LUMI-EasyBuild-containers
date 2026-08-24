@@ -544,6 +544,17 @@ unset SLURM_EXPORT_ENV ;
 -- ]==] )
 -- end
 
+if mode() == 'load' then
+LmodMessage( [==[
+
+Known restrictions:
+- Fortran compilation is not supported in PrgEnv-amd as the rocm/7.0.3 module
+  which is being used, does not contain the classic flang compilers which are
+  still needed for cray-libsci and cray-mpich.
+]==] )
+end
+
+
 """
 
 moduleclass = 'devel'
