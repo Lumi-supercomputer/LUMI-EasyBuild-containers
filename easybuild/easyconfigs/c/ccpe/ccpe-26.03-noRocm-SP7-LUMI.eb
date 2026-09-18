@@ -472,6 +472,7 @@ local_singularity_bind = ','.join( [ # Add bindings here!
     '/usr/bin/sattach',
     '/usr/bin/sbatch',
     '/usr/bin/sbcast',
+    '/usr/bin/scancel',
     '/usr/bin/scontrol',
     '/usr/bin/sinfo',
     '/usr/bin/squeue',
