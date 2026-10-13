@@ -1,6 +1,6 @@
 # PyTorch container user instructions
 
-!!! Note "Different kind of PyTorch containers"
+!!! Note "This page is for the former AMD-provided containers and not for the now recommended LUMI AI Factory containers."
 
     This page is about the containers that AMD provided before the January 2026 system update
     and the EasyBuild recipes that made those containers available in a more user-friendly way
@@ -13,10 +13,14 @@
     For additional resources and examples on using PyTorch on LUMI, have a look at the 
     [LUMI AI Guide](https://github.com/Lumi-supercomputer/LUMI-AI-Guide).
 
-    These are currently the recommended AI containers as AMD and LUST do not plan to build new
-    containers.
+    **The LUMI AI Factory (LAIF) containers are currently the recommended AI containers as AMD and LUST do not plan to build new
+    containers. The containers on this page should not be used anymore for new projects,
+    and for old projects, if you run into issues, the answer will be to switch to the
+    new LAIF containers. The sole reason to keep the documentation below if for those 
+    projects that still use those containers and for which they still work. There are 
+    known issues that will not be fixed.**
 
-The containers that are provided by the LUMI User Support Team can be used in
+The containers that were provided by the LUMI User Support Team with AMD can be used in
 two possible ways:
 
 -   [Through modules and wrapper scripts generated via EasyBuild](index.md#module-and-wrapper-scripts)
