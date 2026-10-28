@@ -1,5 +1,26 @@
 # Tensorflow container user instructions
 
+!!! warning "Unsupported and security-compromised"
+
+    The TensorFlow containers used by the EasyBuild recipes on this page and stored in
+    `/appl/local/containers` are no longer supported. They will likely not work
+    at all anymore after the January 2027 system update.
+
+    These containers have not been patched after the eMudhra certificate compromise
+    issue in October 2026 that hit Python hard. To be able to safely install
+    packages in a virtual environment on top of these containers, you will have 
+    to download and install a new version of `pip` in a safe way.
+
+    One suggestion is to use
+
+    ``` bash
+    python -m pip install "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+    ```
+
+    after which you can do further updates of `pip` and other packages. This variant
+    is safe because it checks a checksum, so you can see if there is a man-in-the-middle
+    attack that tries to serve you a modified version of `pip`.
+
 **BETA VERSION, problems may occur and may not be solved quickly, 
 and the documentation needs further development.**
 
