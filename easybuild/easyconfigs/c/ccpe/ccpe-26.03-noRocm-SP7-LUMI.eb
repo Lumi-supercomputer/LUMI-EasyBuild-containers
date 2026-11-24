@@ -9,7 +9,11 @@
 #DOC This version does not contain any ROCm module. Instead, one is provided via the 
 #DOC software stacks enabled in the container (CrayEnv and LUMI/26.03 partition/G).
 #DOC It is meant to be used in the LUMI environment as it was after the january 2026
-#DOC update and may not work anymore after a future system update.
+#DOC update and may not work anymore after a future system update. It is a tool to 
+#DOC prepare for the system as it will be after the January 2027 update, with toolchains
+#DOC based on the CPE 26.03 with ROCm(tm) 7.0.3 and the classic flang compiler in ROCm(tm)
+#DOC rather than the default new-generation flang in this version of ROCm(tm) as the 
+#DOC programming environment is not compatible with new-generation flang.
 #DOC
 #DOC This container can be installed in `partition/container` via LUMI/25.03 or more recent
 #DOC LUMI stacks, after which the module will be available in CrayEnv and all versions of the
@@ -27,7 +31,7 @@ name =          'ccpe'
 version =       '.'.join( local_cpe_fullversion.split('.')[:2] )
 versionsuffix = f'-noRocm-SP7-LUMI'
 
-local_sif = f'cpe-{local_cpe_fullversion}-SP7-LUMI-26.01.sif'
+local_sif = f'cpe-{local_cpe_fullversion}-SP7-LUMI-26.01-noROCm.sif'
 
 local_ccpe_version =     f'{version}{versionsuffix} '
 local_appl_lumi =        f'/pfs/lustref1/appl/lumi/ccpe/appl/{version}-{local_c_rocm_major_minor}'
